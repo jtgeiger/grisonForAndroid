@@ -21,6 +21,7 @@ import com.sibilantsolutions.grison.evt.ImageHandlerI;
 import com.sibilantsolutions.grison.evt.LostConnectionEvt;
 import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
+import com.sibilantsolutions.grison.sound.adpcm.AdpcmDecoder;
 
 import java.net.InetSocketAddress;
 
@@ -47,12 +48,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void run() {
-                final InetSocketAddress address = new InetSocketAddress("192.168.43.203", 50080);
+                final InetSocketAddress address = new InetSocketAddress("cam.lan", 80);
 
                 //TODO: Grison threads should be daemons so they will die when the UI does.
                 //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
-                //TODO: Audio decoder without java dependencies.
-                //TODO: Need a session.close() method!
+                //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?
 
                 final String username = "TODOuser";
                 final String password = "TODOpass";
@@ -60,8 +60,6 @@ public class MainActivity extends AppCompatActivity {
                 final ImageHandlerI imageHandler = new ImageHandlerI() {
                     @Override
                     public void onReceive(VideoDataText videoData) {
-                        Log.i(TAG, "onReceive: ");
-
                         byte[] dataContent = videoData.getDataContent();
                         final Bitmap bMap = BitmapFactory.decodeByteArray(dataContent, 0, dataContent.length);
                         runOnUiThread(new Runnable() {
@@ -89,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
                         AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT, 500000, AudioTrack.MODE_STREAM);
 
                 AudioHandlerI audioHandler = new AudioHandlerI() {
-                    HACK_AdpcmDecoder adpcmDecoder = new HACK_AdpcmDecoder();
+                    AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
 
                     @Override
                     public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
@@ -111,11 +109,12 @@ public class MainActivity extends AppCompatActivity {
 
                 foscamSession = FoscamSession.connect(address, username, password, audioHandler, imageHandler, alarmHandler, lostConnHandler);
                 boolean success = foscamSession.videoStart();
-                boolean audioStartSuccess = foscamSession.audioStart();
-                if (audioStartSuccess) {
-                    audioTrack.play();
-                }
-                Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
+                Log.i(TAG, "run: videoStart success=" + success);
+//                boolean audioStartSuccess = foscamSession.audioStart();
+//                if (audioStartSuccess) {
+//                    audioTrack.play();
+//                }
+//                Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
             }
         };
         new Thread(r, "mySessionConnector").start();
@@ -125,9 +124,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         if (foscamSession != null) {
-            foscamSession.audioEnd();
-            foscamSession.videoEnd();
-            foscamSession.talkEnd();
+            foscamSession.disconnect();
         }
     }
 
