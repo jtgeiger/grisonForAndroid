@@ -24,12 +24,15 @@ import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
 import com.sibilantsolutions.grison.sound.adpcm.AdpcmDecoder;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private ImageView mImageView;
     private FoscamSession foscamSession;
+    private AudioTrack audioTrack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
                 //TODO: Grison threads should be daemons so they will die when the UI does.
                 //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
                 //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?
+                //TODO: Store cam address, port, username, password in Preferences.
 
                 final String username = "TODOuser";
                 final String password = "TODOpass";
@@ -83,8 +87,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
 
-                final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 8000,
-                        AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT, 500000, AudioTrack.MODE_STREAM);
+                int millisecondsToBuffer = 150;
+                double percentOfASecondToBuffer = millisecondsToBuffer / 1000.0;
+                int bitsPerByte = 8;
+                int bufferSizeInBytes = (int) ((AdpcmDecoder.SAMPLE_SIZE_IN_BITS / bitsPerByte) * AdpcmDecoder.SAMPLE_RATE * percentOfASecondToBuffer);
+                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AdpcmDecoder.SAMPLE_RATE,
+                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSizeInBytes, AudioTrack.MODE_STREAM);
 
                 AudioHandlerI audioHandler = new AudioHandlerI() {
                     AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
@@ -97,7 +105,12 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onReceive(AudioDataText audioData) {
                         byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
-                        audioTrack.write(bytes, 0, bytes.length);
+                        short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+                        int numWritten = audioTrack.write(shorts, 0, shorts.length);
+                        Log.i(TAG, "audio: numWritten=" + numWritten);
+                        if (numWritten != shorts.length) {
+                            throw new UnsupportedOperationException("array len=" + shorts.length + " but only wrote " + numWritten + "byte(s)");
+                        }
                     }
                 };
                 LostConnectionHandlerI lostConnHandler = new LostConnectionHandlerI() {
@@ -109,12 +122,12 @@ public class MainActivity extends AppCompatActivity {
 
                 foscamSession = FoscamSession.connect(address, username, password, audioHandler, imageHandler, alarmHandler, lostConnHandler);
                 boolean success = foscamSession.videoStart();
-                Log.i(TAG, "run: videoStart success=" + success);
-//                boolean audioStartSuccess = foscamSession.audioStart();
-//                if (audioStartSuccess) {
-//                    audioTrack.play();
-//                }
-//                Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
+//                Log.i(TAG, "run: videoStart success=" + success);
+                boolean audioStartSuccess = foscamSession.audioStart();
+                if (audioStartSuccess) {
+                    audioTrack.play();
+                }
+                Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
             }
         };
         new Thread(r, "mySessionConnector").start();
@@ -126,6 +139,20 @@ public class MainActivity extends AppCompatActivity {
         if (foscamSession != null) {
             foscamSession.disconnect();
         }
+        audioTrack.pause();
+        audioTrack.flush();
+        audioTrack.release();
+    }
+
+    private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        bb.order(byteOrder);
+        short[] shorts = new short[bytes.length / 2];
+        for (int i = 0; i < shorts.length; i++) {
+            shorts[i] = bb.getShort();
+        }
+
+        return shorts;
     }
 
 }
