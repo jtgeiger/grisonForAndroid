@@ -107,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
                         byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
                         short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
                         int numWritten = audioTrack.write(shorts, 0, shorts.length);
-                        Log.i(TAG, "audio: numWritten=" + numWritten);
                         if (numWritten != shorts.length) {
                             throw new UnsupportedOperationException("array len=" + shorts.length + " but only wrote " + numWritten + "byte(s)");
                         }
