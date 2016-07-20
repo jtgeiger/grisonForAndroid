@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Grison for Android</string>
+    <string name="prefs">Preferences</string>
+    <string name="host">Host</string>
+    <string name="host_summary">Camera host name or IP address</string>
+    <string name="port">Port</string>
+    <string name="port_summary">Camera port</string>
+    <string name="username">User name</string>
+    <string name="password">Password</string>
 </resources>

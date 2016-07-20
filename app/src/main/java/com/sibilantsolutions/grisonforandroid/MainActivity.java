@@ -1,5 +1,6 @@
 package com.sibilantsolutions.grisonforandroid;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioFormat;
@@ -8,6 +9,9 @@ import android.media.AudioTrack;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.widget.ImageView;
 
 import com.sibilantsolutions.grison.driver.foscam.domain.AudioDataText;
@@ -138,9 +142,11 @@ public class MainActivity extends AppCompatActivity {
         if (foscamSession != null) {
             foscamSession.disconnect();
         }
-        audioTrack.pause();
-        audioTrack.flush();
-        audioTrack.release();
+        if (audioTrack != null) {
+            audioTrack.pause();
+            audioTrack.flush();
+            audioTrack.release();
+        }
     }
 
     private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
@@ -152,6 +158,32 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return shorts;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
+
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.menu_main, menu);
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        super.onOptionsItemSelected(item);
+
+        switch (item.getItemId()) {
+
+            case R.id.prefs_menu:
+                Intent intent = new Intent(this, AppPreferencesActivity.class);
+                startActivity(intent);
+                return true;
+
+            default:
+                return false;
+        }
     }
 
 }
