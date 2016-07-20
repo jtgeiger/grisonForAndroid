@@ -1,13 +1,16 @@
 package com.sibilantsolutions.grisonforandroid;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -55,15 +58,23 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void run() {
-                final InetSocketAddress address = new InetSocketAddress("cam.lan", 80);
+                SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+
+                String host = preferences.getString("host", null);
+                int port = Integer.parseInt(preferences.getString("port", "80"));
+                String username = preferences.getString("username", null);
+                String password = preferences.getString("password", null);
+
+                if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+                    Log.i(TAG, "run: nothing to do.");
+                    return;
+                }
+
+                final InetSocketAddress address = new InetSocketAddress(host, port);
 
                 //TODO: Grison threads should be daemons so they will die when the UI does.
                 //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
                 //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?
-                //TODO: Store cam address, port, username, password in Preferences.
-
-                final String username = "TODOuser";
-                final String password = "TODOpass";
 
                 final ImageHandlerI imageHandler = new ImageHandlerI() {
                     @Override
@@ -141,12 +152,16 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
         if (foscamSession != null) {
             foscamSession.disconnect();
+            foscamSession = null;
         }
         if (audioTrack != null) {
             audioTrack.pause();
             audioTrack.flush();
             audioTrack.release();
+            audioTrack = null;
         }
+
+        mImageView.setImageDrawable(null);
     }
 
     private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
