@@ -1,6 +1,8 @@
 package com.sibilantsolutions.grisonforandroid.domain;
 
-public class CamDef {
+import java.io.Serializable;
+
+public class CamDef implements Serializable {
 
     private String name;
     private String host;

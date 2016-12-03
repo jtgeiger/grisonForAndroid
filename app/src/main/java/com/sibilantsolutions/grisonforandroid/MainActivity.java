@@ -4,6 +4,7 @@ import android.app.ListActivity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioFormat;
@@ -39,20 +40,32 @@ import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
 import com.sibilantsolutions.grison.sound.adpcm.AdpcmDecoder;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 public class MainActivity extends ListActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int REQ_ADD_CAM = 1;
+    public static final String KEY_CAM_DEFS = "KEY_CAM_DEFS";
     private ImageView mImageView;
     private FoscamSession foscamSession;
     private AudioTrack audioTrack;
+
+    private SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,22 +73,19 @@ public class MainActivity extends ListActivity {
         setContentView(R.layout.activity_main);
 
 //        mImageView = (ImageView) findViewById(R.id.image_view);
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
-        String host = preferences.getString("host", null);
-        int port = Integer.parseInt(preferences.getString("port", "80"));
-        String username = preferences.getString("username", null);
-        String password = preferences.getString("password", null);
+        final ArrayList<CamDef> camDefs = new ArrayList<>();
 
-//        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-//            Log.i(TAG, "run: nothing to do.");
-//            return;
-//        }
-//
-//        setListAdapter(new MyCamAdapter(this, new ArrayList<CamDef>(Arrays.asList(new CamDef("Name TODO", host,
-// port, username, password),
-//                new CamDef("Second cam", "foo", 8080, "bar", "pw")))));
-        setListAdapter(new MyCamAdapter(this, new ArrayList<CamDef>()));
+        Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
+        if (strings != null) {
+            for (String str : strings) {
+                final CamDef camDef = deserialize(str);
+                camDefs.add(camDef);
+            }
+        }
+
+        setListAdapter(new MyCamAdapter(this, camDefs));
     }
 
     public void onClickAddCam(View view) {
@@ -85,16 +95,54 @@ public class MainActivity extends ListActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQ_ADD_CAM && resultCode == RESULT_OK) {
-            final CamDef camDef = new CamDef(
-                    data.getStringExtra(AddCamActivity.EXTRA_NAME),
-                    data.getStringExtra(AddCamActivity.EXTRA_HOST),
-                    data.getIntExtra(AddCamActivity.EXTRA_PORT, -1612031442),
-                    data.getStringExtra(AddCamActivity.EXTRA_USERNAME),
-                    data.getStringExtra(AddCamActivity.EXTRA_PASSWORD));
-            //TODO: Add this to saved settings.
+            final CamDef camDef = (CamDef) data.getSerializableExtra(AddCamActivity.EXTRA_CAM_DEF);
+
+            Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
+            if (strings == null) {
+                strings = new HashSet<>();
+            } else {
+                //Make a copy because the returned obj is not guaranteed to be editable.
+                strings = new HashSet<>(strings);
+            }
+            strings.add(serialize(camDef));
+            final Editor editor = sharedPreferences.edit();
+            editor.putStringSet(KEY_CAM_DEFS, strings);
+            editor.apply();
+
             final MyCamAdapter listAdapter = (MyCamAdapter) getListAdapter();
             listAdapter.add(camDef);
         }
+    }
+
+    CamDef deserialize(String s) {
+        final ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(s.getBytes(ISO_8859_1));
+        final Object obj;
+        try {
+            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+            obj = objectInputStream.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new UnsupportedOperationException("TODO (CSB)");
+        }
+
+        if (obj instanceof CamDef) {
+            return (CamDef) obj;
+        }
+
+        throw new IllegalArgumentException("Expected obj type=" + CamDef.class.getName() + ", got=" + obj.getClass()
+                .getName());
+    }
+
+    String serialize(CamDef camDef) {
+        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try {
+            final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+            objectOutputStream.writeObject(camDef);
+        } catch (IOException e) {
+            throw new UnsupportedOperationException("TODO (CSB)", e);
+        }
+
+        final byte[] bytes = byteArrayOutputStream.toByteArray();
+        return new String(bytes, ISO_8859_1);
     }
 
     private static class MyCamAdapter extends ArrayAdapter<CamDef> {
@@ -163,6 +211,7 @@ public class MainActivity extends ListActivity {
 
                 final InetSocketAddress address = new InetSocketAddress(host, port);
 
+                //TODO: Need to handle failure to connect the TCP socket.
                 //TODO: Grison threads should be daemons so they will die when the UI does.
                 //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
                 //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?

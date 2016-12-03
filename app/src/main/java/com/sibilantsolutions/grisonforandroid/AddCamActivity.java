@@ -6,14 +6,11 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 
+import com.sibilantsolutions.grisonforandroid.domain.CamDef;
+
 public class AddCamActivity extends Activity {
 
-    public static final String EXTRA_NAME = "NAME";
-    public static final String EXTRA_HOST = "HOST";
-    public static final String EXTRA_PORT = "PORT";
-    public static final String EXTRA_USERNAME = "USERNAME";
-    public static final String EXTRA_PASSWORD = "PASSWORD";
-
+    public static final String EXTRA_CAM_DEF = "EXTRA_CAM_DEF";
     private EditText nameEditText;
     private EditText hostEditText;
     private EditText portEditText;
@@ -34,11 +31,10 @@ public class AddCamActivity extends Activity {
 
     public void onClickOk(View view) {
         Intent intent = new Intent();
-        intent.putExtra(EXTRA_NAME, nameEditText.getText().toString());
-        intent.putExtra(EXTRA_HOST, hostEditText.getText().toString());
-        intent.putExtra(EXTRA_PORT, Integer.parseInt(portEditText.getText().toString()));
-        intent.putExtra(EXTRA_USERNAME, usernameEditText.getText().toString());
-        intent.putExtra(EXTRA_PASSWORD, passwordEditText.getText().toString());
+        CamDef camDef = new CamDef(nameEditText.getText().toString(), hostEditText.getText().toString(), Integer
+                .parseInt(portEditText.getText().toString()), usernameEditText.getText().toString(), passwordEditText
+                .getText().toString());
+        intent.putExtra(EXTRA_CAM_DEF, camDef);
         setResult(RESULT_OK, intent);
         finish();
     }
