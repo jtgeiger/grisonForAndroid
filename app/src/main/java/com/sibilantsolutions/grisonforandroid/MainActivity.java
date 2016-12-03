@@ -69,7 +69,8 @@ public class MainActivity extends ListActivity {
             return;
         }
 
-        setListAdapter(new MyCamAdapter(this, new CamDef[]{new CamDef("Name TODO", host, port, username, password)}));
+        setListAdapter(new MyCamAdapter(this, new CamDef[]{new CamDef("Name TODO", host, port, username, password),
+                new CamDef("Second cam", "foo", 8080, "bar", "pw")}));
     }
 
     private static class MyCamAdapter extends ArrayAdapter<CamDef> {
