@@ -24,6 +24,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.sibilantsolutions.grison.driver.foscam.domain.AudioDataText;
@@ -153,6 +154,7 @@ public class MainActivity extends ListActivity {
 
         private static class ViewHolder {
             ImageView camPreview;
+            ProgressBar camLoadingProgressBar;
             TextView camName;
             TextView camAddress;
             TextView camStatus;
@@ -168,17 +170,28 @@ public class MainActivity extends ListActivity {
                 convertView.setTag(viewHolder);
 
                 viewHolder.camPreview = (ImageView) convertView.findViewById(R.id.cam_image_preview);
+                viewHolder.camLoadingProgressBar = (ProgressBar) convertView.findViewById(R.id.cam_image_progress_bar);
                 viewHolder.camName = (TextView) convertView.findViewById(R.id.cam_name);
                 viewHolder.camAddress = (TextView) convertView.findViewById(R.id.cam_address);
                 viewHolder.camStatus = (TextView) convertView.findViewById(R.id.cam_status);
             }
 
-            ViewHolder viewHolder = (ViewHolder) convertView.getTag();
+            final ViewHolder viewHolder = (ViewHolder) convertView.getTag();
             CamDef camDef = getItem(position);
             assert camDef != null;
             viewHolder.camName.setText(camDef.getName());
             viewHolder.camAddress.setText(String.format(Locale.ROOT, "%s@%s:%d", camDef.getUsername(), camDef.getHost
                     (), camDef.getPort()));
+
+            //HACK TODO: Need real impl when cam connects or fails to connect.
+            viewHolder.camPreview.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
+                    viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable.ic_menu_camera));
+                    viewHolder.camPreview.setVisibility(View.VISIBLE);
+                }
+            }, 5000);
 
             return convertView;
         }
