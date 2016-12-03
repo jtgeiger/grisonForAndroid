@@ -1,6 +1,7 @@
 package com.sibilantsolutions.grisonforandroid;
 
-import android.app.Activity;
+import android.app.ListActivity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -10,12 +11,19 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.sibilantsolutions.grison.driver.foscam.domain.AudioDataText;
 import com.sibilantsolutions.grison.driver.foscam.domain.VideoDataText;
@@ -29,12 +37,14 @@ import com.sibilantsolutions.grison.evt.LostConnectionEvt;
 import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
 import com.sibilantsolutions.grison.sound.adpcm.AdpcmDecoder;
+import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Locale;
 
-public class MainActivity extends Activity {
+public class MainActivity extends ListActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private ImageView mImageView;
@@ -46,13 +56,69 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mImageView = (ImageView) findViewById(R.id.image_view);
+//        mImageView = (ImageView) findViewById(R.id.image_view);
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 
+        String host = preferences.getString("host", null);
+        int port = Integer.parseInt(preferences.getString("port", "80"));
+        String username = preferences.getString("username", null);
+        String password = preferences.getString("password", null);
+
+        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+            Log.i(TAG, "run: nothing to do.");
+            return;
+        }
+
+        setListAdapter(new MyCamAdapter(this, new CamDef[]{new CamDef("Name TODO", host, port, username, password)}));
     }
+
+    private static class MyCamAdapter extends ArrayAdapter<CamDef> {
+
+        public MyCamAdapter(Context context, CamDef[] objects) {
+            super(context, R.layout.card_cam_summary, objects);
+        }
+
+        private static class ViewHolder {
+            ImageView camPreview;
+            TextView camName;
+            TextView camAddress;
+            TextView camStatus;
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            if (convertView == null) {
+                convertView = LayoutInflater.from(getContext()).inflate(R.layout.card_cam_summary, parent, false);
+
+                ViewHolder viewHolder = new ViewHolder();
+                convertView.setTag(viewHolder);
+
+                viewHolder.camPreview = (ImageView) convertView.findViewById(R.id.cam_image_preview);
+                viewHolder.camName = (TextView) convertView.findViewById(R.id.cam_name);
+                viewHolder.camAddress = (TextView) convertView.findViewById(R.id.cam_address);
+                viewHolder.camStatus = (TextView) convertView.findViewById(R.id.cam_status);
+            }
+
+            ViewHolder viewHolder = (ViewHolder) convertView.getTag();
+            CamDef camDef = getItem(position);
+            assert camDef != null;
+            viewHolder.camName.setText(camDef.getName());
+            viewHolder.camAddress.setText(String.format(Locale.ROOT, "%s@%s:%d", camDef.getUsername(), camDef.getHost
+                    (), camDef.getPort()));
+
+            return convertView;
+        }
+    }
+
 
     @Override
     protected void onStart() {
         super.onStart();
+
+        if (true) {
+            return;
+        }
 
         Runnable r = new Runnable() {
 
@@ -161,7 +227,9 @@ public class MainActivity extends Activity {
             audioTrack = null;
         }
 
-        mImageView.setImageDrawable(null);
+        if (mImageView != null) {
+            mImageView.setImageDrawable(null);
+        }
     }
 
     private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {

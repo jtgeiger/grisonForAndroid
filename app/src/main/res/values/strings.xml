@@ -8,4 +8,6 @@
     <string name="username">User name</string>
     <string name="password">Password</string>
     <string name="camera_preview">Camera preview</string>
+    <string name="add_a_camera_to_get_started">Add a camera to get started</string>
+    <string name="add_camera_button">Add camera button</string>
 </resources>
