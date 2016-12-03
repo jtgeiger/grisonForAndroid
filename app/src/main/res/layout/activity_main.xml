@@ -24,13 +24,12 @@
         android:text="@string/add_a_camera_to_get_started"/>
 
     <ImageButton
+        style="@style/AppTheme.FAB"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:contentDescription="@string/add_camera_button"
-        android:backgroundTint="@color/colorAccent"
-        android:src="@android:drawable/ic_input_add"
-        android:elevation="20dp"/>
+        android:src="@android:drawable/ic_input_add"/>
 
 </RelativeLayout>
