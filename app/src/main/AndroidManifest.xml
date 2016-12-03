@@ -21,6 +21,8 @@
             android:name=".AppPreferencesActivity"
             android:label="@string/prefs">
         </activity>
+        <activity android:name=".AddCamActivity">
+        </activity>
     </application>
 
 </manifest>

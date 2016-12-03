@@ -32,6 +32,7 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:contentDescription="@string/add_camera_button"
-        android:src="@android:drawable/ic_input_add"/>
+        android:src="@android:drawable/ic_input_add"
+        android:onClick="onClickAddCam"/>
 
 </RelativeLayout>

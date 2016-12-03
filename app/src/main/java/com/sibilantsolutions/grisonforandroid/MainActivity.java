@@ -42,11 +42,14 @@ import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends ListActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private static final int REQ_ADD_CAM = 1;
     private ImageView mImageView;
     private FoscamSession foscamSession;
     private AudioTrack audioTrack;
@@ -64,18 +67,39 @@ public class MainActivity extends ListActivity {
         String username = preferences.getString("username", null);
         String password = preferences.getString("password", null);
 
-        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            Log.i(TAG, "run: nothing to do.");
-            return;
-        }
+//        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+//            Log.i(TAG, "run: nothing to do.");
+//            return;
+//        }
+//
+//        setListAdapter(new MyCamAdapter(this, new ArrayList<CamDef>(Arrays.asList(new CamDef("Name TODO", host,
+// port, username, password),
+//                new CamDef("Second cam", "foo", 8080, "bar", "pw")))));
+        setListAdapter(new MyCamAdapter(this, new ArrayList<CamDef>()));
+    }
 
-        setListAdapter(new MyCamAdapter(this, new CamDef[]{new CamDef("Name TODO", host, port, username, password),
-                new CamDef("Second cam", "foo", 8080, "bar", "pw")}));
+    public void onClickAddCam(View view) {
+        startActivityForResult(new Intent(this, AddCamActivity.class), REQ_ADD_CAM);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_ADD_CAM && resultCode == RESULT_OK) {
+            final CamDef camDef = new CamDef(
+                    data.getStringExtra(AddCamActivity.EXTRA_NAME),
+                    data.getStringExtra(AddCamActivity.EXTRA_HOST),
+                    data.getIntExtra(AddCamActivity.EXTRA_PORT, -1612031442),
+                    data.getStringExtra(AddCamActivity.EXTRA_USERNAME),
+                    data.getStringExtra(AddCamActivity.EXTRA_PASSWORD));
+            //TODO: Add this to saved settings.
+            final MyCamAdapter listAdapter = (MyCamAdapter) getListAdapter();
+            listAdapter.add(camDef);
+        }
     }
 
     private static class MyCamAdapter extends ArrayAdapter<CamDef> {
 
-        public MyCamAdapter(Context context, CamDef[] objects) {
+        public MyCamAdapter(Context context, List<CamDef> objects) {
             super(context, R.layout.card_cam_summary, objects);
         }
 
