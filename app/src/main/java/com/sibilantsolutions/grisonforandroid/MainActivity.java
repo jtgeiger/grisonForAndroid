@@ -1,5 +1,6 @@
 package com.sibilantsolutions.grisonforandroid;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -9,7 +10,6 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
@@ -34,7 +34,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private ImageView mImageView;
