@@ -1,15 +1,11 @@
 package com.sibilantsolutions.grisonforandroid;
 
 import android.app.ListActivity;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.AudioFormat;
-import android.media.AudioManager;
-import android.media.AudioTrack;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -38,7 +34,6 @@ import com.sibilantsolutions.grison.evt.ImageHandlerI;
 import com.sibilantsolutions.grison.evt.LostConnectionEvt;
 import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
-import com.sibilantsolutions.grison.sound.adpcm.AdpcmDecoder;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 
 import java.io.ByteArrayInputStream;
@@ -50,9 +45,11 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
@@ -62,9 +59,11 @@ public class MainActivity extends ListActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int REQ_ADD_CAM = 1;
     public static final String KEY_CAM_DEFS = "KEY_CAM_DEFS";
-    private ImageView mImageView;
-    private FoscamSession foscamSession;
-    private AudioTrack audioTrack;
+//    private ImageView mImageView;
+//    private FoscamSession foscamSession;
+//    private AudioTrack audioTrack;
+
+    private Map<CamDef, CamConnectionListener> camDefCamConnectionListenerMap = new HashMap<>();
 
     private SharedPreferences sharedPreferences;
 
@@ -112,6 +111,8 @@ public class MainActivity extends ListActivity {
 
             final MyCamAdapter listAdapter = (MyCamAdapter) getListAdapter();
             listAdapter.add(camDef);
+
+            startCam(camDef);
         }
     }
 
@@ -146,13 +147,26 @@ public class MainActivity extends ListActivity {
         return new String(bytes, ISO_8859_1);
     }
 
+    private interface CamConnectionListener {
+
+        void onConnecting();
+
+        void onConnected();
+
+        void onDisconnected(String reason);
+    }
+
     private static class MyCamAdapter extends ArrayAdapter<CamDef> {
 
-        public MyCamAdapter(Context context, List<CamDef> objects) {
+        private final MainActivity activity;
+
+        public MyCamAdapter(MainActivity context, List<CamDef> objects) {
             super(context, R.layout.card_cam_summary, objects);
+            this.activity = context;
         }
 
         private static class ViewHolder {
+            CamDef curCamDef;
             ImageView camPreview;
             ProgressBar camLoadingProgressBar;
             TextView camName;
@@ -177,45 +191,81 @@ public class MainActivity extends ListActivity {
             }
 
             final ViewHolder viewHolder = (ViewHolder) convertView.getTag();
+            if (viewHolder.curCamDef != null) {
+                activity.camDefCamConnectionListenerMap.remove(viewHolder.curCamDef);
+            }
             CamDef camDef = getItem(position);
             assert camDef != null;
+            viewHolder.curCamDef = camDef;
             viewHolder.camName.setText(camDef.getName());
             viewHolder.camAddress.setText(String.format(Locale.ROOT, "%s@%s:%d", camDef.getUsername(), camDef.getHost
                     (), camDef.getPort()));
 
-            //HACK TODO: Need real impl when cam connects or fails to connect.
-            viewHolder.camPreview.postDelayed(new Runnable() {
+            activity.camDefCamConnectionListenerMap.put(camDef, new CamConnectionListener() {
+
                 @Override
-                public void run() {
+                public void onConnecting() {
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            viewHolder.camLoadingProgressBar.setVisibility(View.VISIBLE);
+                            viewHolder.camPreview.setVisibility(View.INVISIBLE);
+                        }
+                    });
+                }
+
+                @Override
+                public void onConnected() {
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
                     viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
                     viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable.ic_menu_camera));
                     viewHolder.camPreview.setVisibility(View.VISIBLE);
+                        }
+                    });
                 }
-            }, 5000);
+
+                @Override
+                public void onDisconnected(final String reason) {
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
+                            viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
+                                    .ic_dialog_alert));
+                            viewHolder.camPreview.setVisibility(View.VISIBLE);
+                            viewHolder.camStatus.setText(reason);
+                        }
+                    });
+                }
+            });
 
             return convertView;
         }
     }
 
-
     @Override
     protected void onStart() {
         super.onStart();
 
-        if (true) {
-            return;
+        final MyCamAdapter listAdapter = (MyCamAdapter) getListAdapter();
+        for (int i = 0; i < listAdapter.getCount(); i++) {
+            CamDef camDef = listAdapter.getItem(i);
+            startCam(camDef);
         }
 
+    }
+
+    private void startCam(final CamDef camDef) {
         Runnable r = new Runnable() {
 
             @Override
             public void run() {
-                SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-
-                String host = preferences.getString("host", null);
-                int port = Integer.parseInt(preferences.getString("port", "80"));
-                String username = preferences.getString("username", null);
-                String password = preferences.getString("password", null);
+                String host = camDef.getHost();
+                int port = camDef.getPort();
+                String username = camDef.getUsername();
+                String password = camDef.getPassword();
 
                 if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
                     Log.i(TAG, "run: nothing to do.");
@@ -237,7 +287,7 @@ public class MainActivity extends ListActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                mImageView.setImageBitmap(bMap);
+                                //TODO mImageView.setImageBitmap(bMap);
                             }
                         });
                     }
@@ -255,16 +305,36 @@ public class MainActivity extends ListActivity {
                     }
                 };
 
-                int millisecondsToBuffer = 150;
-                double percentOfASecondToBuffer = millisecondsToBuffer / 1000.0;
-                int bitsPerByte = 8;
-                int bufferSizeInBytes = (int) ((AdpcmDecoder.SAMPLE_SIZE_IN_BITS / bitsPerByte) * AdpcmDecoder.SAMPLE_RATE * percentOfASecondToBuffer);
-                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AdpcmDecoder.SAMPLE_RATE,
-                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSizeInBytes, AudioTrack.MODE_STREAM);
-
-                AudioHandlerI audioHandler = new AudioHandlerI() {
-                    AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
-
+//                int millisecondsToBuffer = 150;
+//                double percentOfASecondToBuffer = millisecondsToBuffer / 1000.0;
+//                int bitsPerByte = 8;
+//                int bufferSizeInBytes = (int) ((AdpcmDecoder.SAMPLE_SIZE_IN_BITS / bitsPerByte) * AdpcmDecoder
+// .SAMPLE_RATE * percentOfASecondToBuffer);
+//                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AdpcmDecoder.SAMPLE_RATE,
+//                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSizeInBytes, AudioTrack
+// .MODE_STREAM);
+//
+//                AudioHandlerI audioHandler = new AudioHandlerI() {
+//                    AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
+//
+//                    @Override
+//                    public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
+//                        //No-op.
+//                    }
+//
+//                    @Override
+//                    public void onReceive(AudioDataText audioData) {
+//                        byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
+//                        short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder
+// .BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+//                        int numWritten = audioTrack.write(shorts, 0, shorts.length);
+//                        if (numWritten != shorts.length) {
+//                            throw new UnsupportedOperationException("array len=" + shorts.length + " but only wrote
+// " + numWritten + "byte(s)");
+//                        }
+//                    }
+//                };
+                final AudioHandlerI audioHandler = new AudioHandlerI() {
                     @Override
                     public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
                         //No-op.
@@ -272,12 +342,7 @@ public class MainActivity extends ListActivity {
 
                     @Override
                     public void onReceive(AudioDataText audioData) {
-                        byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
-                        short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-                        int numWritten = audioTrack.write(shorts, 0, shorts.length);
-                        if (numWritten != shorts.length) {
-                            throw new UnsupportedOperationException("array len=" + shorts.length + " but only wrote " + numWritten + "byte(s)");
-                        }
+                        //No-op.
                     }
                 };
                 LostConnectionHandlerI lostConnHandler = new LostConnectionHandlerI() {
@@ -287,13 +352,33 @@ public class MainActivity extends ListActivity {
                     }
                 };
 
-                foscamSession = FoscamSession.connect(address, username, password, audioHandler, imageHandler, alarmHandler, lostConnHandler);
-                boolean success = foscamSession.videoStart();
-//                Log.i(TAG, "run: videoStart success=" + success);
-                boolean audioStartSuccess = foscamSession.audioStart();
-                if (audioStartSuccess) {
-                    audioTrack.play();
+                FoscamSession foscamSession;
+                boolean success = false;
+                final CamConnectionListener camConnectionListener = camDefCamConnectionListenerMap.get(camDef);
+                try {
+                    if (camConnectionListener != null) {
+                        camConnectionListener.onConnecting();
+                    }
+                    foscamSession = FoscamSession.connect(address, username, password, audioHandler,
+                            imageHandler, alarmHandler, lostConnHandler);
+                    success = foscamSession.videoStart();
+                    if (camConnectionListener != null) {
+                        if (success)
+                            camConnectionListener.onConnected();
+                        else
+                            camConnectionListener.onDisconnected("Could not start video at " + address);
+                    }
+                } catch (Exception e) {
+                    if (camConnectionListener != null) {
+                        camConnectionListener.onDisconnected("Could not connect to " + address);
+                    }
                 }
+//                Log.i(TAG, "run: videoStart success=" + success);
+//                boolean audioStartSuccess = foscamSession.audioStart();
+//                if (audioStartSuccess) {
+//                    audioTrack.play();
+//                }
+                String audioStartSuccess = "N/A";
                 Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
             }
         };
@@ -303,20 +388,20 @@ public class MainActivity extends ListActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        if (foscamSession != null) {
-            foscamSession.disconnect();
-            foscamSession = null;
-        }
-        if (audioTrack != null) {
-            audioTrack.pause();
-            audioTrack.flush();
-            audioTrack.release();
-            audioTrack = null;
-        }
-
-        if (mImageView != null) {
-            mImageView.setImageDrawable(null);
-        }
+//        if (foscamSession != null) {
+//            foscamSession.disconnect();
+//            foscamSession = null;
+//        }
+//        if (audioTrack != null) {
+//            audioTrack.pause();
+//            audioTrack.flush();
+//            audioTrack.release();
+//            audioTrack = null;
+//        }
+//
+//        if (mImageView != null) {
+//            mImageView.setImageDrawable(null);
+//        }
     }
 
     private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
