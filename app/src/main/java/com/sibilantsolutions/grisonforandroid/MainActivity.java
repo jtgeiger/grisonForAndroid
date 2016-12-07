@@ -45,11 +45,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
@@ -63,9 +61,9 @@ public class MainActivity extends ListActivity {
 //    private FoscamSession foscamSession;
 //    private AudioTrack audioTrack;
 
-    private Map<CamDef, CamConnectionListener> camDefCamConnectionListenerMap = new HashMap<>();
-
     private SharedPreferences sharedPreferences;
+
+    private MyCamArrayAdapter myCamArrayAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,17 +73,22 @@ public class MainActivity extends ListActivity {
 //        mImageView = (ImageView) findViewById(R.id.image_view);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
-        final ArrayList<CamDef> camDefs = new ArrayList<>();
+        final List<CamSession> camSessions = new ArrayList<>();
 
-        Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
+        final Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
         if (strings != null) {
             for (String str : strings) {
                 final CamDef camDef = deserialize(str);
-                camDefs.add(camDef);
+                CamSession camSession = new CamSession();
+                camSession.camDef = camDef;
+                camSession.camStatus = CamStatus.CONNECTING;
+                camSessions.add(camSession);
             }
         }
 
-        setListAdapter(new MyCamAdapter(this, camDefs));
+        myCamArrayAdapter = new MyCamArrayAdapter(this, camSessions);
+
+        setListAdapter(myCamArrayAdapter);
     }
 
     public void onClickAddCam(View view) {
@@ -109,10 +112,13 @@ public class MainActivity extends ListActivity {
             editor.putStringSet(KEY_CAM_DEFS, strings);
             editor.apply();
 
-            final MyCamAdapter listAdapter = (MyCamAdapter) getListAdapter();
-            listAdapter.add(camDef);
+            CamSession camSession = new CamSession();
+            camSession.camDef = camDef;
+            camSession.camStatus = CamStatus.CONNECTING;
 
-            startCam(camDef);
+            myCamArrayAdapter.add(camSession);
+
+            startCam(camSession);
         }
     }
 
@@ -147,26 +153,30 @@ public class MainActivity extends ListActivity {
         return new String(bytes, ISO_8859_1);
     }
 
-    private interface CamConnectionListener {
-
-        void onConnecting();
-
-        void onConnected();
-
-        void onDisconnected(String reason);
+    private enum CamStatus {
+        CONNECTING,
+        CONNECTED,
+        CANT_CONNECT,
+        LOST_CONNECTION
     }
 
-    private static class MyCamAdapter extends ArrayAdapter<CamDef> {
+    private static class CamSession {
+        CamDef camDef;
+        CamStatus camStatus;
+        String reason = "UNKNOWN";
+        Bitmap curBitmap;
+    }
+
+    private static class MyCamArrayAdapter extends ArrayAdapter<CamSession> {
 
         private final MainActivity activity;
 
-        public MyCamAdapter(MainActivity context, List<CamDef> objects) {
+        public MyCamArrayAdapter(MainActivity context, List<CamSession> objects) {
             super(context, R.layout.card_cam_summary, objects);
             this.activity = context;
         }
 
         private static class ViewHolder {
-            CamDef curCamDef;
             ImageView camPreview;
             ProgressBar camLoadingProgressBar;
             TextView camName;
@@ -191,55 +201,45 @@ public class MainActivity extends ListActivity {
             }
 
             final ViewHolder viewHolder = (ViewHolder) convertView.getTag();
-            if (viewHolder.curCamDef != null) {
-                activity.camDefCamConnectionListenerMap.remove(viewHolder.curCamDef);
-            }
-            CamDef camDef = getItem(position);
-            assert camDef != null;
-            viewHolder.curCamDef = camDef;
+
+            CamSession camSession = getItem(position);
+            assert camSession != null;
+            CamDef camDef = camSession.camDef;
             viewHolder.camName.setText(camDef.getName());
             viewHolder.camAddress.setText(String.format(Locale.ROOT, "%s@%s:%d", camDef.getUsername(), camDef.getHost
                     (), camDef.getPort()));
 
-            activity.camDefCamConnectionListenerMap.put(camDef, new CamConnectionListener() {
-
-                @Override
-                public void onConnecting() {
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            viewHolder.camLoadingProgressBar.setVisibility(View.VISIBLE);
-                            viewHolder.camPreview.setVisibility(View.INVISIBLE);
-                        }
-                    });
-                }
-
-                @Override
-                public void onConnected() {
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
+            switch (camSession.camStatus) {
+                case CANT_CONNECT:
+                case LOST_CONNECTION:
                     viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
-                    viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable.ic_menu_camera));
+                    viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
+                            .ic_dialog_alert));
                     viewHolder.camPreview.setVisibility(View.VISIBLE);
-                        }
-                    });
-                }
+                    viewHolder.camStatus.setText(camSession.reason);
+                    break;
 
-                @Override
-                public void onDisconnected(final String reason) {
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
-                            viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
-                                    .ic_dialog_alert));
-                            viewHolder.camPreview.setVisibility(View.VISIBLE);
-                            viewHolder.camStatus.setText(reason);
-                        }
-                    });
-                }
-            });
+                case CONNECTED:
+                    viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
+                    if (camSession.curBitmap != null) {
+                        viewHolder.camPreview.setImageBitmap(camSession.curBitmap);
+                    } else {
+                        viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
+                                .ic_menu_camera));
+                    }
+                    viewHolder.camPreview.setVisibility(View.VISIBLE);
+                    viewHolder.camStatus.setText("Connected");
+                    break;
+
+                case CONNECTING:
+                    viewHolder.camLoadingProgressBar.setVisibility(View.VISIBLE);
+                    viewHolder.camPreview.setVisibility(View.INVISIBLE);
+                    viewHolder.camStatus.setText("Connecting");
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Unexpected status=" + camSession.camStatus);
+            }
 
             return convertView;
         }
@@ -249,19 +249,19 @@ public class MainActivity extends ListActivity {
     protected void onStart() {
         super.onStart();
 
-        final MyCamAdapter listAdapter = (MyCamAdapter) getListAdapter();
-        for (int i = 0; i < listAdapter.getCount(); i++) {
-            CamDef camDef = listAdapter.getItem(i);
-            startCam(camDef);
+        for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
+            CamSession camSession = myCamArrayAdapter.getItem(i);
+            startCam(camSession);
         }
 
     }
 
-    private void startCam(final CamDef camDef) {
+    private void startCam(final CamSession camSession) {
         Runnable r = new Runnable() {
 
             @Override
             public void run() {
+                CamDef camDef = camSession.camDef;
                 String host = camDef.getHost();
                 int port = camDef.getPort();
                 String username = camDef.getUsername();
@@ -288,6 +288,8 @@ public class MainActivity extends ListActivity {
                             @Override
                             public void run() {
                                 //TODO mImageView.setImageBitmap(bMap);
+                                camSession.curBitmap = bMap;
+                                notifyDataSetChangedOnUiThread();
                             }
                         });
                     }
@@ -349,29 +351,33 @@ public class MainActivity extends ListActivity {
                     @Override
                     public void onLostConnection(LostConnectionEvt evt) {
                         Log.i(TAG, "onLostConnection: ");
+                        camSession.camStatus = CamStatus.LOST_CONNECTION;
+                        camSession.reason = "Lost connection";
+                        notifyDataSetChangedOnUiThread();
                     }
                 };
 
                 FoscamSession foscamSession;
                 boolean success = false;
-                final CamConnectionListener camConnectionListener = camDefCamConnectionListenerMap.get(camDef);
                 try {
-                    if (camConnectionListener != null) {
-                        camConnectionListener.onConnecting();
-                    }
+                    camSession.camStatus = CamStatus.CONNECTING;
+                    notifyDataSetChangedOnUiThread();
                     foscamSession = FoscamSession.connect(address, username, password, audioHandler,
                             imageHandler, alarmHandler, lostConnHandler);
                     success = foscamSession.videoStart();
-                    if (camConnectionListener != null) {
-                        if (success)
-                            camConnectionListener.onConnected();
-                        else
-                            camConnectionListener.onDisconnected("Could not start video at " + address);
+                    camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
+                    if (!success) {
+                        camSession.reason = "Connected but couldn't start video";
                     }
+                    notifyDataSetChangedOnUiThread();
                 } catch (Exception e) {
-                    if (camConnectionListener != null) {
-                        camConnectionListener.onDisconnected("Could not connect to " + address);
+                    Log.i(TAG, "run: " + address, e);
+                    camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
+                    camSession.reason = "Could not connect to " + address;
+                    if (e.getLocalizedMessage() != null) {
+                        camSession.reason += ": " + e.getLocalizedMessage();
                     }
+                    notifyDataSetChangedOnUiThread();
                 }
 //                Log.i(TAG, "run: videoStart success=" + success);
 //                boolean audioStartSuccess = foscamSession.audioStart();
@@ -384,6 +390,16 @@ public class MainActivity extends ListActivity {
         };
         new Thread(r, "mySessionConnector").start();
     }
+
+    private void notifyDataSetChangedOnUiThread() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                myCamArrayAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
 
     @Override
     protected void onStop() {
