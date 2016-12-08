@@ -13,4 +13,5 @@
     <string name="cancel">Cancel</string>
     <string name="ok">OK</string>
     <string name="camera_name">Camera name</string>
+    <string name="delete">Delete</string>
 </resources>
