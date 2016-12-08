@@ -50,6 +50,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -153,8 +154,30 @@ public class MainActivity extends ListActivity {
 
     private void deleteItem(final int position) {
         final CamSession camSession = myCamArrayAdapter.getItem(position);
-        //TODO: camSession.stop();
-        //TODO: Remove from preferences.
+        assert camSession != null;
+        if (camSession.foscamSession != null) {
+            camSession.foscamSession.disconnect();  //TODO: Get off the UI thread.
+            camSession.foscamSession = null;
+        }
+        Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
+        if (strings != null) {
+            //Make a copy because the returned obj is not guaranteed to be editable.
+            strings = new HashSet<>(strings);
+            for (Iterator<String> iter = strings.iterator(); iter.hasNext(); ) {
+                String camDefStr = iter.next();
+                CamDef camDef = deserialize(camDefStr);
+                if (camSession.camDef.equals(camDef)) {
+                    iter.remove();
+                    break;
+                }
+            }
+            final Editor editor = sharedPreferences.edit();
+            editor.putStringSet(KEY_CAM_DEFS, strings);
+            editor.apply();
+        } else {
+            Log.e(TAG, "deleteItem: cam defs was null");
+        }
+
         myCamArrayAdapter.remove(camSession);
     }
 
@@ -233,6 +256,7 @@ public class MainActivity extends ListActivity {
         CamStatus camStatus;
         String reason = "UNKNOWN";
         Bitmap curBitmap;
+        FoscamSession foscamSession;
     }
 
     private static class MyCamArrayAdapter extends ArrayAdapter<CamSession> {
@@ -436,6 +460,9 @@ public class MainActivity extends ListActivity {
                     camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
                     if (!success) {
                         camSession.reason = "Connected but couldn't start video";
+                        foscamSession.disconnect();
+                    } else {
+                        camSession.foscamSession = foscamSession;
                     }
                     notifyDataSetChangedOnUiThread();
                 } catch (Exception e) {

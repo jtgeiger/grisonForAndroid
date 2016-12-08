@@ -39,4 +39,29 @@ public class CamDef implements Serializable {
         return username;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        CamDef camDef = (CamDef) o;
+
+        if (port != camDef.port) return false;
+        if (!name.equals(camDef.name)) return false;
+        if (!host.equals(camDef.host)) return false;
+        if (!username.equals(camDef.username)) return false;
+        return password.equals(camDef.password);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name.hashCode();
+        result = 31 * result + host.hashCode();
+        result = 31 * result + port;
+        result = 31 * result + username.hashCode();
+        result = 31 * result + password.hashCode();
+        return result;
+    }
+
 }
