@@ -153,7 +153,7 @@ public class MainActivity extends ListActivity {
         final CamSession camSession = myCamArrayAdapter.getItem(position);
         assert camSession != null;
         if (camSession.foscamSession != null) {
-            camSession.foscamSession.disconnect();  //TODO: Get off the UI thread.
+            camSession.foscamSession.disconnect();
             camSession.foscamSession = null;
         }
         Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
@@ -365,8 +365,6 @@ public class MainActivity extends ListActivity {
 
                 final InetSocketAddress address = new InetSocketAddress(host, port);
 
-                //TODO: Need to handle failure to connect the TCP socket.
-                //TODO: Grison threads should be daemons so they will die when the UI does.
                 //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
                 //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?
 
