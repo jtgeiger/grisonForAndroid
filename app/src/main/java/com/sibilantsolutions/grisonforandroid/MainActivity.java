@@ -260,7 +260,7 @@ public class MainActivity extends ListActivity {
 
         private final MainActivity activity;
 
-        public MyCamArrayAdapter(MainActivity context, List<CamSession> objects) {
+        MyCamArrayAdapter(MainActivity context, List<CamSession> objects) {
             super(context, R.layout.card_cam_summary, objects);
             this.activity = context;
         }
@@ -317,13 +317,13 @@ public class MainActivity extends ListActivity {
                                 .ic_menu_camera));
                     }
                     viewHolder.camPreview.setVisibility(View.VISIBLE);
-                    viewHolder.camStatus.setText("Connected");
+                    viewHolder.camStatus.setText(R.string.connected);
                     break;
 
                 case CONNECTING:
                     viewHolder.camLoadingProgressBar.setVisibility(View.VISIBLE);
                     viewHolder.camPreview.setVisibility(View.INVISIBLE);
-                    viewHolder.camStatus.setText("Connecting");
+                    viewHolder.camStatus.setText(R.string.connecting);
                     break;
 
                 default:
