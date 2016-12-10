@@ -62,8 +62,6 @@ public class MainActivity extends ListActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int REQ_ADD_CAM = 1;
     public static final String KEY_CAM_DEFS = "KEY_CAM_DEFS";
-//    private ImageView mImageView;
-//    private FoscamSession foscamSession;
 //    private AudioTrack audioTrack;
 
     private SharedPreferences sharedPreferences;
@@ -76,7 +74,6 @@ public class MainActivity extends ListActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        mImageView = (ImageView) findViewById(R.id.image_view);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
         final List<CamSession> camSessions = new ArrayList<>();
@@ -379,7 +376,6 @@ public class MainActivity extends ListActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                //TODO mImageView.setImageBitmap(bMap);
                                 camSession.curBitmap = bMap;
                                 notifyDataSetChangedOnUiThread();
                             }
@@ -499,19 +495,12 @@ public class MainActivity extends ListActivity {
     @Override
     protected void onStop() {
         super.onStop();
-//        if (foscamSession != null) {
-//            foscamSession.disconnect();
-//            foscamSession = null;
-//        }
+
 //        if (audioTrack != null) {
 //            audioTrack.pause();
 //            audioTrack.flush();
 //            audioTrack.release();
 //            audioTrack = null;
-//        }
-//
-//        if (mImageView != null) {
-//            mImageView.setImageDrawable(null);
 //        }
 
         for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
@@ -533,32 +522,6 @@ public class MainActivity extends ListActivity {
         }
 
         return shorts;
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        super.onCreateOptionsMenu(menu);
-
-        MenuInflater menuInflater = getMenuInflater();
-        menuInflater.inflate(R.menu.menu_main, menu);
-
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        super.onOptionsItemSelected(item);
-
-        switch (item.getItemId()) {
-
-            case R.id.prefs_menu:
-                Intent intent = new Intent(this, AppPreferencesActivity.class);
-                startActivity(intent);
-                return true;
-
-            default:
-                return false;
-        }
     }
 
 }

@@ -17,10 +17,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity
-            android:name=".AppPreferencesActivity"
-            android:label="@string/prefs">
-        </activity>
         <activity android:name=".AddCamActivity">
         </activity>
     </application>
