@@ -513,6 +513,15 @@ public class MainActivity extends ListActivity {
 //        if (mImageView != null) {
 //            mImageView.setImageDrawable(null);
 //        }
+
+        for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
+            CamSession camSession = myCamArrayAdapter.getItem(i);
+            assert camSession != null;
+            if (camSession.foscamSession != null) {
+                camSession.foscamSession.disconnect();
+                camSession.foscamSession = null;
+            }
+        }
     }
 
     private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
