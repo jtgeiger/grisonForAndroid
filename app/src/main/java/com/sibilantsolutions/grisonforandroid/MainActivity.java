@@ -310,14 +310,16 @@ public class MainActivity extends ListActivity {
 
                 case CONNECTED:
                     viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
+                    viewHolder.camStatus.setText(R.string.connected);
                     if (camSession.curBitmap != null) {
                         viewHolder.camPreview.setImageBitmap(camSession.curBitmap);
+                        viewHolder.camStatus.append(String.format(Locale.ROOT, " (%d x %d)", camSession.curBitmap
+                                .getWidth(), camSession.curBitmap.getHeight()));
                     } else {
                         viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
                                 .ic_menu_camera));
                     }
                     viewHolder.camPreview.setVisibility(View.VISIBLE);
-                    viewHolder.camStatus.setText(R.string.connected);
                     break;
 
                 case CONNECTING:
