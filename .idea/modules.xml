@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/GrisonforAndroid.iml" filepath="$PROJECT_DIR$/GrisonforAndroid.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/grisonForAndroid.iml" filepath="$PROJECT_DIR$/grisonForAndroid.iml" />
     </modules>
   </component>
 </project>
