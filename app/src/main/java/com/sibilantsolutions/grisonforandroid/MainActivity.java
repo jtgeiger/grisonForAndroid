@@ -1,12 +1,15 @@
 package com.sibilantsolutions.grisonforandroid;
 
 import android.app.ListActivity;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -29,6 +32,7 @@ import android.widget.TextView;
 
 import com.sibilantsolutions.grison.driver.foscam.domain.AudioDataText;
 import com.sibilantsolutions.grison.driver.foscam.domain.VideoDataText;
+import com.sibilantsolutions.grison.driver.foscam.net.CgiService;
 import com.sibilantsolutions.grison.driver.foscam.net.FoscamSession;
 import com.sibilantsolutions.grison.evt.AlarmEvt;
 import com.sibilantsolutions.grison.evt.AlarmHandlerI;
@@ -68,11 +72,27 @@ public class MainActivity extends ListActivity {
 
     private MyCamArrayAdapter myCamArrayAdapter;
     private ActionMode mActionMode;
+    private CamService.CamServiceBinder camServiceBinder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        final boolean boundService = bindService(new Intent(this, CamService.class), new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
+                camServiceBinder = (CamService.CamServiceBinder)service;
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                Log.d(TAG, "onServiceDisconnected: name=" + name);
+            }
+        }, 0);
+
+        Log.d(TAG, "onCreate: bound service=" + boundService);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -152,10 +172,10 @@ public class MainActivity extends ListActivity {
     private void deleteItem(final int position) {
         final CamSession camSession = myCamArrayAdapter.getItem(position);
         assert camSession != null;
-        if (camSession.foscamSession != null) {
-            camSession.foscamSession.disconnect();
-            camSession.foscamSession = null;
-        }
+//        if (camSession.foscamSession != null) {
+//            camSession.foscamSession.disconnect();
+//            camSession.foscamSession = null;
+//        }
         Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
         if (strings != null) {
             //Make a copy because the returned obj is not guaranteed to be editable.
@@ -206,7 +226,13 @@ public class MainActivity extends ListActivity {
 
             myCamArrayAdapter.add(camSession);
 
-            startCam(camSession);
+//            startCam(camSession);
+            camServiceBinder.startCam(camSession, new Runnable() {
+                @Override
+                public void run() {
+                    notifyDataSetChangedOnUiThread();
+                }
+            });
         }
     }
 
@@ -241,19 +267,19 @@ public class MainActivity extends ListActivity {
         return new String(bytes, ISO_8859_1);
     }
 
-    private enum CamStatus {
+    enum CamStatus {
         CONNECTING,
         CONNECTED,
         CANT_CONNECT,
         LOST_CONNECTION
     }
 
-    private static class CamSession {
+    static class CamSession {
         CamDef camDef;
         CamStatus camStatus;
         String reason = "UNKNOWN";
         Bitmap curBitmap;
-        FoscamSession foscamSession;
+//        FoscamSession foscamSession;
     }
 
     private static class MyCamArrayAdapter extends ArrayAdapter<CamSession> {
@@ -342,71 +368,95 @@ public class MainActivity extends ListActivity {
 
         for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
             CamSession camSession = myCamArrayAdapter.getItem(i);
-            startCam(camSession);
+//            startCam(camSession);
+            camServiceBinder.startCam(camSession, new Runnable() {
+                @Override
+                public void run() {
+                    notifyDataSetChangedOnUiThread();
+                }
+            });
         }
 
     }
 
-    private void startCam(final CamSession camSession) {
-        Runnable r = new Runnable() {
-
-            @Override
-            public void run() {
-                CamDef camDef = camSession.camDef;
-                String host = camDef.getHost();
-                int port = camDef.getPort();
-                String username = camDef.getUsername();
-                String password = camDef.getPassword();
-
-                if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-                    Log.i(TAG, "run: nothing to do.");
-                    return;
-                }
-
-                final InetSocketAddress address = new InetSocketAddress(host, port);
-
-                //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
-                //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?
-
-                final ImageHandlerI imageHandler = new ImageHandlerI() {
-                    @Override
-                    public void onReceive(VideoDataText videoData) {
-                        byte[] dataContent = videoData.getDataContent();
-                        final Bitmap bMap = BitmapFactory.decodeByteArray(dataContent, 0, dataContent.length);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                camSession.curBitmap = bMap;
-                                notifyDataSetChangedOnUiThread();
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onVideoStopped(VideoStoppedEvt videoStoppedEvt) {
-
-                    }
-                };
-
-                AlarmHandlerI alarmHandler = new AlarmHandlerI() {
-                    @Override
-                    public void onAlarm(AlarmEvt evt) {
-                        //No-op.
-                    }
-                };
-
-//                int millisecondsToBuffer = 150;
-//                double percentOfASecondToBuffer = millisecondsToBuffer / 1000.0;
-//                int bitsPerByte = 8;
-//                int bufferSizeInBytes = (int) ((AdpcmDecoder.SAMPLE_SIZE_IN_BITS / bitsPerByte) * AdpcmDecoder
-// .SAMPLE_RATE * percentOfASecondToBuffer);
-//                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AdpcmDecoder.SAMPLE_RATE,
-//                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSizeInBytes, AudioTrack
-// .MODE_STREAM);
+//    private void startCam(final CamSession camSession) {
+//        Runnable r = new Runnable() {
 //
-//                AudioHandlerI audioHandler = new AudioHandlerI() {
-//                    AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
+//            @Override
+//            public void run() {
+//                CamDef camDef = camSession.camDef;
+//                String host = camDef.getHost();
+//                int port = camDef.getPort();
+//                String username = camDef.getUsername();
+//                String password = camDef.getPassword();
 //
+//                if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+//                    Log.i(TAG, "run: nothing to do.");
+//                    return;
+//                }
+//
+//                final InetSocketAddress address = new InetSocketAddress(host, port);
+//
+//                //TODO: Need to handle failed authentication (have a onAuthSuccess/onAuthFail handler).
+//                //TODO: Grison separate threads for video vs audio; but -- how to keep them in sync?
+//
+//                final ImageHandlerI imageHandler = new ImageHandlerI() {
+//                    @Override
+//                    public void onReceive(VideoDataText videoData) {
+//                        byte[] dataContent = videoData.getDataContent();
+//                        final Bitmap bMap = BitmapFactory.decodeByteArray(dataContent, 0, dataContent.length);
+//                        runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                camSession.curBitmap = bMap;
+//                                notifyDataSetChangedOnUiThread();
+//                            }
+//                        });
+//                    }
+//
+//                    @Override
+//                    public void onVideoStopped(VideoStoppedEvt videoStoppedEvt) {
+//
+//                    }
+//                };
+//
+//                AlarmHandlerI alarmHandler = new AlarmHandlerI() {
+//                    @Override
+//                    public void onAlarm(AlarmEvt evt) {
+//                        //No-op.
+//                    }
+//                };
+//
+////                int millisecondsToBuffer = 150;
+////                double percentOfASecondToBuffer = millisecondsToBuffer / 1000.0;
+////                int bitsPerByte = 8;
+////                int bufferSizeInBytes = (int) ((AdpcmDecoder.SAMPLE_SIZE_IN_BITS / bitsPerByte) * AdpcmDecoder
+//// .SAMPLE_RATE * percentOfASecondToBuffer);
+////                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AdpcmDecoder.SAMPLE_RATE,
+////                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSizeInBytes, AudioTrack
+//// .MODE_STREAM);
+////
+////                AudioHandlerI audioHandler = new AudioHandlerI() {
+////                    AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
+////
+////                    @Override
+////                    public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
+////                        //No-op.
+////                    }
+////
+////                    @Override
+////                    public void onReceive(AudioDataText audioData) {
+////                        byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
+////                        short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder
+//// .BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+////                        int numWritten = audioTrack.write(shorts, 0, shorts.length);
+////                        if (numWritten != shorts.length) {
+////                            throw new UnsupportedOperationException("array len=" + shorts.length + " but only wrote
+//// " + numWritten + "byte(s)");
+////                        }
+////                    }
+////                };
+//                final AudioHandlerI audioHandler = new AudioHandlerI() {
 //                    @Override
 //                    public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
 //                        //No-op.
@@ -414,73 +464,55 @@ public class MainActivity extends ListActivity {
 //
 //                    @Override
 //                    public void onReceive(AudioDataText audioData) {
-//                        byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
-//                        short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder
-// .BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-//                        int numWritten = audioTrack.write(shorts, 0, shorts.length);
-//                        if (numWritten != shorts.length) {
-//                            throw new UnsupportedOperationException("array len=" + shorts.length + " but only wrote
-// " + numWritten + "byte(s)");
-//                        }
+//                        //No-op.
 //                    }
 //                };
-                final AudioHandlerI audioHandler = new AudioHandlerI() {
-                    @Override
-                    public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
-                        //No-op.
-                    }
-
-                    @Override
-                    public void onReceive(AudioDataText audioData) {
-                        //No-op.
-                    }
-                };
-                LostConnectionHandlerI lostConnHandler = new LostConnectionHandlerI() {
-                    @Override
-                    public void onLostConnection(LostConnectionEvt evt) {
-                        Log.i(TAG, "onLostConnection: ");
-                        camSession.camStatus = CamStatus.LOST_CONNECTION;
-                        camSession.reason = "Lost connection";
-                        notifyDataSetChangedOnUiThread();
-                    }
-                };
-
-                FoscamSession foscamSession;
-                boolean success = false;
-                try {
-                    camSession.camStatus = CamStatus.CONNECTING;
-                    notifyDataSetChangedOnUiThread();
-                    foscamSession = FoscamSession.connect(address, username, password, audioHandler,
-                            imageHandler, alarmHandler, lostConnHandler);
-                    success = foscamSession.videoStart();
-                    camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
-                    if (!success) {
-                        camSession.reason = "Connected but couldn't start video";
-                        foscamSession.disconnect();
-                    } else {
-                        camSession.foscamSession = foscamSession;
-                    }
-                    notifyDataSetChangedOnUiThread();
-                } catch (Exception e) {
-                    Log.i(TAG, "run: " + address, e);
-                    camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
-                    camSession.reason = "Could not connect to " + address;
-                    if (e.getLocalizedMessage() != null) {
-                        camSession.reason += ": " + e.getLocalizedMessage();
-                    }
-                    notifyDataSetChangedOnUiThread();
-                }
-//                Log.i(TAG, "run: videoStart success=" + success);
-//                boolean audioStartSuccess = foscamSession.audioStart();
-//                if (audioStartSuccess) {
-//                    audioTrack.play();
+//                LostConnectionHandlerI lostConnHandler = new LostConnectionHandlerI() {
+//                    @Override
+//                    public void onLostConnection(LostConnectionEvt evt) {
+//                        Log.i(TAG, "onLostConnection: ");
+//                        camSession.camStatus = CamStatus.LOST_CONNECTION;
+//                        camSession.reason = "Lost connection";
+//                        notifyDataSetChangedOnUiThread();
+//                    }
+//                };
+//
+//                FoscamSession foscamSession;
+//                boolean success = false;
+//                try {
+//                    camSession.camStatus = CamStatus.CONNECTING;
+//                    notifyDataSetChangedOnUiThread();
+//                    foscamSession = FoscamSession.connect(address, username, password, audioHandler,
+//                            imageHandler, alarmHandler, lostConnHandler);
+//                    success = foscamSession.videoStart();
+//                    camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
+//                    if (!success) {
+//                        camSession.reason = "Connected but couldn't start video";
+//                        foscamSession.disconnect();
+//                    } else {
+//                        camSession.foscamSession = foscamSession;
+//                    }
+//                    notifyDataSetChangedOnUiThread();
+//                } catch (Exception e) {
+//                    Log.i(TAG, "run: " + address, e);
+//                    camSession.camStatus = success ? CamStatus.CONNECTED : CamStatus.CANT_CONNECT;
+//                    camSession.reason = "Could not connect to " + address;
+//                    if (e.getLocalizedMessage() != null) {
+//                        camSession.reason += ": " + e.getLocalizedMessage();
+//                    }
+//                    notifyDataSetChangedOnUiThread();
 //                }
-                String audioStartSuccess = "N/A";
-                Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
-            }
-        };
-        new Thread(r, "mySessionConnector").start();
-    }
+////                Log.i(TAG, "run: videoStart success=" + success);
+////                boolean audioStartSuccess = foscamSession.audioStart();
+////                if (audioStartSuccess) {
+////                    audioTrack.play();
+////                }
+//                String audioStartSuccess = "N/A";
+//                Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" + audioStartSuccess);
+//            }
+//        };
+//        new Thread(r, "mySessionConnector").start();
+//    }
 
     private void notifyDataSetChangedOnUiThread() {
         runOnUiThread(new Runnable() {
@@ -506,10 +538,10 @@ public class MainActivity extends ListActivity {
         for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
             CamSession camSession = myCamArrayAdapter.getItem(i);
             assert camSession != null;
-            if (camSession.foscamSession != null) {
-                camSession.foscamSession.disconnect();
-                camSession.foscamSession = null;
-            }
+//            if (camSession.foscamSession != null) {
+//                camSession.foscamSession.disconnect();
+//                camSession.foscamSession = null;
+//            }
         }
     }
 
