@@ -7,13 +7,11 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
@@ -30,18 +28,6 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.sibilantsolutions.grison.driver.foscam.domain.AudioDataText;
-import com.sibilantsolutions.grison.driver.foscam.domain.VideoDataText;
-import com.sibilantsolutions.grison.driver.foscam.net.CgiService;
-import com.sibilantsolutions.grison.driver.foscam.net.FoscamSession;
-import com.sibilantsolutions.grison.evt.AlarmEvt;
-import com.sibilantsolutions.grison.evt.AlarmHandlerI;
-import com.sibilantsolutions.grison.evt.AudioHandlerI;
-import com.sibilantsolutions.grison.evt.AudioStoppedEvt;
-import com.sibilantsolutions.grison.evt.ImageHandlerI;
-import com.sibilantsolutions.grison.evt.LostConnectionEvt;
-import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
-import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 
 import java.io.ByteArrayInputStream;
@@ -49,7 +35,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -72,27 +57,12 @@ public class MainActivity extends ListActivity {
 
     private MyCamArrayAdapter myCamArrayAdapter;
     private ActionMode mActionMode;
-    private CamService.CamServiceBinder camServiceBinder;
+    private CamService.CamServiceI camService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        final boolean boundService = bindService(new Intent(this, CamService.class), new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
-                camServiceBinder = (CamService.CamServiceBinder)service;
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                Log.d(TAG, "onServiceDisconnected: name=" + name);
-            }
-        }, 0);
-
-        Log.d(TAG, "onCreate: bound service=" + boundService);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -108,6 +78,15 @@ public class MainActivity extends ListActivity {
                 camSessions.add(camSession);
             }
         }
+
+        startService(CamService.newIntent(this, camSessions, new SerializableRunnable() {
+
+            @Override
+            public void run() {
+                notifyDataSetChangedOnUiThread();
+            }
+        }));
+
 
         myCamArrayAdapter = new MyCamArrayAdapter(this, camSessions);
 
@@ -227,7 +206,7 @@ public class MainActivity extends ListActivity {
             myCamArrayAdapter.add(camSession);
 
 //            startCam(camSession);
-            camServiceBinder.startCam(camSession, new Runnable() {
+            camService.startCam(camSession, new SerializableRunnable() {
                 @Override
                 public void run() {
                     notifyDataSetChangedOnUiThread();
@@ -364,18 +343,49 @@ public class MainActivity extends ListActivity {
 
     @Override
     protected void onStart() {
+
+        Log.d(TAG, "onStart.");
+
         super.onStart();
 
-        for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
-            CamSession camSession = myCamArrayAdapter.getItem(i);
-//            startCam(camSession);
-            camServiceBinder.startCam(camSession, new Runnable() {
-                @Override
-                public void run() {
-                    notifyDataSetChangedOnUiThread();
+        final boolean boundService = bindService(new Intent(this, CamService.class), new
+                ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
+                camService = ((CamService.CamServiceBinder) service).getCamService();
+
+                for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
+                    CamSession camSession = myCamArrayAdapter.getItem(i);
+//                    camServiceBinder.startCam(camSession, new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            notifyDataSetChangedOnUiThread();
+//                        }
+//                    });
+                    camService.startVideo(camSession);
                 }
-            });
-        }
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                Log.d(TAG, "onServiceDisconnected: name=" + name);
+            }
+        }, BIND_AUTO_CREATE);
+
+        Log.d(TAG, "onStart: bound service=" + boundService);
+
+
+//        for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
+//            CamSession camSession = myCamArrayAdapter.getItem(i);
+//            startCam(camSession);
+//            camServiceBinder.startCam(camSession, new Runnable() {
+//                @Override
+//                public void run() {
+//                    notifyDataSetChangedOnUiThread();
+//                }
+//            });
+//        }
 
     }
 
@@ -542,6 +552,7 @@ public class MainActivity extends ListActivity {
 //                camSession.foscamSession.disconnect();
 //                camSession.foscamSession = null;
 //            }
+            camService.stopVideo(camSession);
         }
     }
 
