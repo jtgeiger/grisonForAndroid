@@ -79,13 +79,7 @@ public class MainActivity extends ListActivity {
             }
         }
 
-        startService(CamService.newIntent(this, camSessions, new SerializableRunnable() {
-
-            @Override
-            public void run() {
-                notifyDataSetChangedOnUiThread();
-            }
-        }));
+        startService(CamService.newIntent(this));
 
 
         myCamArrayAdapter = new MyCamArrayAdapter(this, camSessions);
@@ -206,7 +200,7 @@ public class MainActivity extends ListActivity {
             myCamArrayAdapter.add(camSession);
 
 //            startCam(camSession);
-            camService.startCam(camSession, new SerializableRunnable() {
+            camService.startCam(camSession, new Runnable() {
                 @Override
                 public void run() {
                     notifyDataSetChangedOnUiThread();
@@ -357,13 +351,13 @@ public class MainActivity extends ListActivity {
 
                 for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
                     CamSession camSession = myCamArrayAdapter.getItem(i);
-//                    camServiceBinder.startCam(camSession, new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            notifyDataSetChangedOnUiThread();
-//                        }
-//                    });
-                    camService.startVideo(camSession);
+                    camService.startCam(camSession, new Runnable() {
+                        @Override
+                        public void run() {
+                            notifyDataSetChangedOnUiThread();
+                        }
+                    });
+//                    camService.startVideo(camSession);
                 }
             }
 
@@ -536,6 +530,9 @@ public class MainActivity extends ListActivity {
 
     @Override
     protected void onStop() {
+
+        Log.d(TAG, "onStop.");
+
         super.onStop();
 
 //        if (audioTrack != null) {

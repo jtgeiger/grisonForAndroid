@@ -23,24 +23,16 @@ import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 
-import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class CamService extends Service {
 
     private static final String TAG = CamService.class.getSimpleName();
-    private static final String EXTRA_CAM_SESSIONS = "EXTRA_CAM_SESSIONS";
-    private static final String EXTRA_LISTENER = "EXTRA_LISTENER";
 
-    public static Intent newIntent(Context context, List<MainActivity.CamSession> camSessions,
-                                   Runnable listener) {
-        final Intent intent = new Intent(context, CamService.class);
-        intent.putExtra(EXTRA_CAM_SESSIONS, (Serializable) camSessions);
-        intent.putExtra(EXTRA_LISTENER, (Serializable) listener);
-        return intent;
+    public static Intent newIntent(Context context) {
+        return new Intent(context, CamService.class);
     }
 
     public interface CamServiceI {
@@ -170,8 +162,8 @@ public class CamService extends Service {
                         foscamSession = FoscamSession.connect(address, username, password,
                                 audioHandler,
                                 imageHandler, alarmHandler, lostConnHandler);
-//                    success = foscamSession.videoStart();
-                        success = true;
+                        success = foscamSession.videoStart();
+//                        success = true;
                         camSession.camStatus = success ? MainActivity.CamStatus.CONNECTED :
                                 MainActivity.CamStatus.CANT_CONNECT;
                         if (!success) {
@@ -230,15 +222,6 @@ public class CamService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand.");
-        final List<MainActivity.CamSession> camSessionList = (List<MainActivity.CamSession>)
-                intent.getSerializableExtra(EXTRA_CAM_SESSIONS);
-
-        final SerializableRunnable runnable = (SerializableRunnable) intent.getSerializableExtra
-                (EXTRA_LISTENER);
-
-        for (MainActivity.CamSession camSession : camSessionList) {
-            cammy.startCam(camSession, runnable);
-        }
         return super.onStartCommand(intent, flags, startId);
     }
 
