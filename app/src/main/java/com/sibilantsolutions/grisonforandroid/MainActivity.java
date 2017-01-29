@@ -61,6 +61,8 @@ public class MainActivity extends ListActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate.");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -551,6 +553,18 @@ public class MainActivity extends ListActivity {
 //            }
             camService.stopVideo(camSession);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        Log.d(TAG, "onResume.");
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        Log.d(TAG, "onPause.");
+        super.onPause();
     }
 
     private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
