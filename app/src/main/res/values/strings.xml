@@ -16,4 +16,5 @@
     <string name="delete">Delete</string>
     <string name="connected">Connected</string>
     <string name="connecting">Connecting</string>
+    <string name="title_activity_cam_view">CamViewActivity</string>
 </resources>

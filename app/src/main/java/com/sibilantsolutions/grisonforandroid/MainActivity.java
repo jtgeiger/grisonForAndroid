@@ -88,6 +88,14 @@ public class MainActivity extends ListActivity {
 
         setListAdapter(myCamArrayAdapter);
 
+        getListView().setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final CamSession camSession = myCamArrayAdapter.getItem(position);
+                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession));
+            }
+        });
+
         getListView().setOnItemLongClickListener(new OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
