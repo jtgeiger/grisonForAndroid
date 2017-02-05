@@ -270,6 +270,8 @@ public class CamService extends Service {
             entry.getValue().disconnect();
         }
 
+        stopSelf();
+
         return super.onUnbind(intent);
     }
 
