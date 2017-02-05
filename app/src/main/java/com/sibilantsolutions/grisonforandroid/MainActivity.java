@@ -92,7 +92,8 @@ public class MainActivity extends ListActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final CamSession camSession = myCamArrayAdapter.getItem(position);
-                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession));
+                assert camSession != null;
+                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession.camDef));
             }
         });
 

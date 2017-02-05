@@ -3,10 +3,11 @@ package com.sibilantsolutions.grisonforandroid;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Binder;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -36,6 +37,10 @@ public class CamService extends Service {
     }
 
     public interface CamServiceI {
+
+        @Nullable
+        MainActivity.CamSession getCamSession(@NonNull CamDef camDef);
+
         void startCam(final MainActivity.CamSession camSession, final Runnable
                 dataSetChangedCallback);
 
@@ -49,6 +54,18 @@ public class CamService extends Service {
         private final Map<MainActivity.CamSession, FoscamSession> camSessionFoscamSessionMap =
                 new HashMap<>();
 
+        @Override
+        @Nullable
+        public MainActivity.CamSession getCamSession(@NonNull CamDef camDef) {
+            for (MainActivity.CamSession camSession : camSessionFoscamSessionMap.keySet()) {
+                if (camSession.camDef.equals(camDef)) {
+                    return camSession;
+                }
+            }
+            return null;
+        }
+
+        @Override
         public void startCam(final MainActivity.CamSession camSession, final Runnable
                 dataSetChangedCallback) {
             Runnable r = new Runnable() {
@@ -77,11 +94,11 @@ public class CamService extends Service {
                         @Override
                         public void onReceive(VideoDataText videoData) {
                             byte[] dataContent = videoData.getDataContent();
-                            final Bitmap bMap = BitmapFactory.decodeByteArray(dataContent, 0, dataContent.length);
-//                        runOnUiThread(new Runnable() {
+                            //                        runOnUiThread(new Runnable() {
 //                            @Override
 //                            public void run() {
-                            camSession.curBitmap = bMap;
+                            camSession.curBitmap = BitmapFactory.decodeByteArray(dataContent, 0,
+                                    dataContent.length);
 //                                notifyDataSetChangedOnUiThread();
                             dataSetChangedCallback.run();
 //                            }
@@ -201,12 +218,16 @@ public class CamService extends Service {
 
         @Override
         public boolean startVideo(MainActivity.CamSession camSession) {
-            return camSessionFoscamSessionMap.get(camSession).videoStart();
+            final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
+            return foscamSession != null && foscamSession.videoStart();
         }
 
         @Override
         public void stopVideo(MainActivity.CamSession camSession) {
-            camSessionFoscamSessionMap.get(camSession).videoEnd();
+            final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
+            if (foscamSession != null) {
+                foscamSession.videoEnd();
+            }
         }
 
     }
@@ -258,7 +279,7 @@ public class CamService extends Service {
 //            return camSessionFoscamSessionMap.get(camSession);
 //        }
 
-        public CamServiceI getCamService() {
+        CamServiceI getCamService() {
             return cammy;
         }
 
