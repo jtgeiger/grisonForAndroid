@@ -10,6 +10,7 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.view.MenuItem;
 import android.widget.ImageView;
 
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
@@ -110,6 +111,17 @@ public class CamViewActivity extends Activity {
         Log.d(TAG, "onStop.");
         super.onStop();
         camSession.deleteObserver(observer);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            // Respond to the action bar's Up/Home button
+            case android.R.id.home:
+                finishAfterTransition();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
 }

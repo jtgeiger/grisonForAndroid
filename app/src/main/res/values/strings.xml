@@ -18,4 +18,5 @@
     <string name="connecting">Connecting</string>
     <string name="title_activity_cam_view">CamViewActivity</string>
     <string name="camera_image">Camera image</string>
+    <string name="camera_image_trans">camera_image</string>
 </resources>

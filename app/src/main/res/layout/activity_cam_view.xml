@@ -15,6 +15,7 @@
         android:id="@+id/cam_image"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/camera_image"/>
+        android:contentDescription="@string/camera_image"
+        android:transitionName="@string/camera_image_trans"/>
 
 </RelativeLayout>

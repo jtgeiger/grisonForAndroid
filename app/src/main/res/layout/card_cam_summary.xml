@@ -29,7 +29,8 @@
                 android:adjustViewBounds="true"
                 android:contentDescription="@string/camera_preview"
                 tools:src="@android:drawable/ic_menu_camera"
-                android:visibility="invisible"/>
+                android:visibility="invisible"
+                android:transitionName="@string/camera_image_trans"/>
 
             <ProgressBar
                 android:id="@+id/cam_image_progress_bar"

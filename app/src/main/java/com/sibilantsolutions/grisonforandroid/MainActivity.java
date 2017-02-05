@@ -1,5 +1,6 @@
 package com.sibilantsolutions.grisonforandroid;
 
+import android.app.ActivityOptions;
 import android.app.ListActivity;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -126,7 +127,12 @@ public class MainActivity extends ListActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final CamSession camSession = myCamArrayAdapter.getItem(position);
                 assert camSession != null;
-                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession.getCamDef()));
+                final View camImageView = view.findViewById(R.id.cam_image_preview);
+                final ActivityOptions activityOptions = ActivityOptions
+                        .makeSceneTransitionAnimation(MainActivity.this, camImageView, getString
+                                (R.string.camera_image_trans));
+                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession.getCamDef()),
+                        activityOptions.toBundle());
             }
         });
 
