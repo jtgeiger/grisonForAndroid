@@ -44,11 +44,13 @@ public class CamService extends Service {
         @Nullable
         CamSession getCamSession(@NonNull CamDef camDef);
 
-        void startCam(final CamSession camSession);
+        void startCam(@NonNull CamSession camSession);
 
-        boolean startVideo(CamSession camSession);
+        boolean startVideo(@NonNull CamSession camSession);
 
-        void stopVideo(CamSession camSession);
+        void stopVideo(@NonNull CamSession camSession);
+
+        void stopSession(@NonNull CamSession camSession);
     }
 
     private static class Cammy implements CamServiceI {
@@ -68,7 +70,7 @@ public class CamService extends Service {
         }
 
         @Override
-        public void startCam(final CamSession camSession) {
+        public void startCam(@NonNull final CamSession camSession) {
             Runnable r = new Runnable() {
 
                 @Override
@@ -224,16 +226,24 @@ public class CamService extends Service {
         }
 
         @Override
-        public boolean startVideo(CamSession camSession) {
+        public boolean startVideo(@NonNull CamSession camSession) {
             final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
             return foscamSession != null && foscamSession.videoStart();
         }
 
         @Override
-        public void stopVideo(CamSession camSession) {
+        public void stopVideo(@NonNull CamSession camSession) {
             final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
             if (foscamSession != null) {
                 foscamSession.videoEnd();
+            }
+        }
+
+        @Override
+        public void stopSession(@NonNull CamSession camSession) {
+            final FoscamSession foscamSession = camSessionFoscamSessionMap.remove(camSession);
+            if (foscamSession != null) {
+                foscamSession.disconnect();
             }
         }
 

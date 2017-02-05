@@ -227,6 +227,10 @@ public class MainActivity extends ListActivity {
         }
 
         myCamArrayAdapter.remove(camSession);
+
+        if (camService != null) {
+            camService.stopSession(camSession);
+        }
     }
 
 
@@ -295,11 +299,8 @@ public class MainActivity extends ListActivity {
 
     private static class MyCamArrayAdapter extends ArrayAdapter<CamSession> {
 
-        private final MainActivity activity;
-
         MyCamArrayAdapter(MainActivity context, List<CamSession> objects) {
             super(context, R.layout.card_cam_summary, objects);
-            this.activity = context;
         }
 
         private static class ViewHolder {
