@@ -68,6 +68,17 @@ public class MainActivity extends ListActivity {
             notifyDataSetChangedOnUiThread();
         }
     };
+    private CamService.CamServiceI.StartCamListener startCamListener = new CamService.CamServiceI
+            .StartCamListener() {
+        @Override
+        public void onCamStartResult(@NonNull CamSession camSession, boolean success) {
+            Log.d(TAG, "onCamStartResult: success=" + success);
+            if (success) {
+                camService.startVideo(camSession);
+            }
+        }
+    };
+
     final private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -78,8 +89,7 @@ public class MainActivity extends ListActivity {
                 CamSession camSession = myCamArrayAdapter.getItem(i);
                 assert camSession != null;
                 camSession.addObserver(observer);
-                camService.startCam(camSession);
-//                    camService.startVideo(camSession);
+                camService.startCam(camSession, startCamListener);
             }
         }
 
@@ -240,6 +250,7 @@ public class MainActivity extends ListActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.d(TAG, "onActivityResult.");
         if (requestCode == REQ_ADD_CAM && resultCode == RESULT_OK) {
             final CamDef camDef = (CamDef) data.getSerializableExtra(AddCamActivity.EXTRA_CAM_DEF);
 
@@ -260,9 +271,7 @@ public class MainActivity extends ListActivity {
 
             myCamArrayAdapter.add(camSession);
 
-//            startCam(camSession);
-            camSession.addObserver(observer);
-            camService.startCam(camSession);
+            camService.startCam(camSession, startCamListener);
         }
     }
 
@@ -401,6 +410,9 @@ public class MainActivity extends ListActivity {
             CamSession camSession = myCamArrayAdapter.getItem(i);
             assert camSession != null;
             camSession.addObserver(observer);
+            if (camService != null) {
+                camService.startVideo(camSession);
+            }
         }
 
     }
@@ -572,7 +584,7 @@ public class MainActivity extends ListActivity {
 //                camSession.foscamSession = null;
 //            }
             camSession.deleteObserver(observer);
-//            camService.stopVideo(camSession);
+            camService.stopVideo(camSession);
         }
     }
 

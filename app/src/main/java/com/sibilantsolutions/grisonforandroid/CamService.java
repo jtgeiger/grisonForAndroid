@@ -30,6 +30,9 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class CamService extends Service {
 
@@ -44,19 +47,29 @@ public class CamService extends Service {
         @Nullable
         CamSession getCamSession(@NonNull CamDef camDef);
 
-        void startCam(@NonNull CamSession camSession);
+        void startCam(@NonNull CamSession camSession, @NonNull StartCamListener startCamListener);
 
-        boolean startVideo(@NonNull CamSession camSession);
+        void startVideo(@NonNull CamSession camSession);
 
         void stopVideo(@NonNull CamSession camSession);
 
         void stopSession(@NonNull CamSession camSession);
+
+        interface StartCamListener {
+            void onCamStartResult(@NonNull CamSession camSession, boolean success);
+        }
+
     }
 
     private static class Cammy implements CamServiceI {
 
-        private final Map<CamSession, FoscamSession> camSessionFoscamSessionMap =
-                new HashMap<>();
+        private final Map<CamSession, FoscamSession> camSessionFoscamSessionMap = new HashMap<>();
+
+        private final Map<CamSession, Integer> camSessionVideoCountMap = new HashMap<>();
+
+        //TODO: Single thread executor, one for each session.
+        //TODO: Use submit instead of execute and track result and possible exceptions.
+        private ExecutorService executorService = Executors.newCachedThreadPool();
 
         @Override
         @Nullable
@@ -70,7 +83,8 @@ public class CamService extends Service {
         }
 
         @Override
-        public void startCam(@NonNull final CamSession camSession) {
+        public void startCam(@NonNull final CamSession camSession, @NonNull final
+        StartCamListener startCamListener) {
             Runnable r = new Runnable() {
 
                 @Override
@@ -175,75 +189,140 @@ public class CamService extends Service {
                         }
                     };
 
-                    FoscamSession foscamSession;
-                    boolean success = false;
+                    final FoscamSession foscamSession;
+                    camSession.setCamStatus(CamStatus.CONNECTING);
+                    camSession.notifyObservers();
                     try {
-                        camSession.setCamStatus(CamStatus.CONNECTING);
-//                    notifyDataSetChangedOnUiThread();
-//                        dataSetChangedCallback.run();
-                        camSession.notifyObservers();
                         foscamSession = FoscamSession.connect(address, username, password,
                                 audioHandler,
                                 imageHandler, alarmHandler, lostConnHandler);
-                        success = foscamSession.videoStart();
-//                        success = true;
-                        camSession.setCamStatus(success ? CamStatus.CONNECTED :
-                                CamStatus.CANT_CONNECT);
-                        if (!success) {
-                            camSession.setReason("Connected but couldn't start video");
-                            foscamSession.disconnect();
-                        } else {
-//                        camSession.foscamSession = foscamSession;
-                            camSessionFoscamSessionMap.put(camSession, foscamSession);
-                        }
-//                    notifyDataSetChangedOnUiThread();
-                        //dataSetChangedCallback.run();
-                        camSession.notifyObservers();
                     } catch (Exception e) {
                         Log.i(TAG, "run: " + address, e);
-                        camSession.setCamStatus(success ? CamStatus.CONNECTED :
-                                CamStatus.CANT_CONNECT);
+                        camSession.setCamStatus(CamStatus.CANT_CONNECT);
                         camSession.setReason("Could not connect to " + address);
                         if (e.getLocalizedMessage() != null) {
                             camSession.setReason(camSession.getReason() + ": " + e
                                     .getLocalizedMessage());
                         }
-//                    notifyDataSetChangedOnUiThread();
-//                        dataSetChangedCallback.run();
                         camSession.notifyObservers();
+                        startCamListener.onCamStartResult(camSession, false);
+                        return;
                     }
+
+                    camSession.setCamStatus(CamStatus.CONNECTED);
+                    camSessionFoscamSessionMap.put(camSession, foscamSession);
+                    camSessionVideoCountMap.put(camSession, 0);
+                    camSession.notifyObservers();
+                    startCamListener.onCamStartResult(camSession, true);
+
 //                Log.i(TAG, "run: videoStart success=" + success);
 //                boolean audioStartSuccess = foscamSession.audioStart();
 //                if (audioStartSuccess) {
 //                    audioTrack.play();
 //                }
-                    String audioStartSuccess = "N/A";
-                    Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" +
-                            audioStartSuccess);
+//                    String audioStartSuccess = "N/A";
+//                    Log.i(TAG, "run: videoStart success=" + success + ", audioStartSuccess=" +
+//                            audioStartSuccess);
                 }
             };
-            new Thread(r, "mySessionConnector").start();
+
+            executorService.execute(r);
         }
 
         @Override
-        public boolean startVideo(@NonNull CamSession camSession) {
-            final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
-            return foscamSession != null && foscamSession.videoStart();
-        }
+        public void startVideo(@NonNull final CamSession camSession) {
+            if (camSessionVideoCountMap.get(camSession) == 0) {
+                Runnable runnable = new Runnable() {
+                    public void run() {
+                        final FoscamSession foscamSession = camSessionFoscamSessionMap.get
+                                (camSession);
 
-        @Override
-        public void stopVideo(@NonNull CamSession camSession) {
-            final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
-            if (foscamSession != null) {
-                foscamSession.videoEnd();
+                        if (foscamSession != null) {
+                            final boolean success = foscamSession.videoStart();
+                            if (success) {
+                                camSessionVideoCountMap.put(camSession, 1);
+                            }
+                        }
+                    }
+                };
+                executorService.execute(runnable);
+            } else {
+                camSessionVideoCountMap.put(camSession, camSessionVideoCountMap.get(camSession) +
+                        1);
             }
         }
 
         @Override
-        public void stopSession(@NonNull CamSession camSession) {
-            final FoscamSession foscamSession = camSessionFoscamSessionMap.remove(camSession);
-            if (foscamSession != null) {
-                foscamSession.disconnect();
+        public void stopVideo(@NonNull final CamSession camSession) {
+            if (camSessionVideoCountMap.get(camSession) > 0) {
+                camSessionVideoCountMap.put(camSession, camSessionVideoCountMap.get(camSession) -
+                        1);
+
+                if (camSessionVideoCountMap.get(camSession) == 0) {
+                    Runnable runnable = new Runnable() {
+                        public void run() {
+                            final FoscamSession foscamSession = camSessionFoscamSessionMap.get
+                                    (camSession);
+
+                            if (foscamSession != null) {
+                                foscamSession.videoEnd();
+                            }
+                        }
+                    };
+                    executorService.execute(runnable);
+                }
+            }
+
+            //TODO: Start a timer and if nobody connects to video or audio, disconnect from camera.
+        }
+
+        @Override
+        public void stopSession(@NonNull final CamSession camSession) {
+            Runnable runnable = new Runnable() {
+                public void run() {
+                    final FoscamSession foscamSession = camSessionFoscamSessionMap.remove
+                            (camSession);
+                    if (foscamSession != null) {
+                        foscamSession.disconnect();
+                    }
+                }
+            };
+            executorService.execute(runnable);
+        }
+
+        private void shutdown() {
+            Runnable runnable = new Runnable() {
+                public void run() {
+                    for (Iterator<Map.Entry<CamSession, FoscamSession>> iterator =
+                         camSessionFoscamSessionMap.entrySet().iterator(); iterator.hasNext(); ) {
+
+                        final Map.Entry<CamSession, FoscamSession> entry = iterator.next();
+                        iterator.remove();
+                        entry.getValue().disconnect();
+                    }
+                }
+            };
+
+            executorService.execute(runnable);
+
+            shutdownAndAwaitTermination(executorService);
+        }
+
+        static void shutdownAndAwaitTermination(ExecutorService pool) {
+            pool.shutdown(); // Disable new tasks from being submitted
+            try {
+                // Wait a while for existing tasks to terminate
+                if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {
+                    pool.shutdownNow(); // Cancel currently executing tasks
+                    // Wait a while for tasks to respond to being cancelled
+                    if (!pool.awaitTermination(60, TimeUnit.SECONDS))
+                        System.err.println("Pool did not terminate");
+                }
+            } catch (InterruptedException ie) {
+                // (Re-)Cancel if current thread also interrupted
+                pool.shutdownNow();
+                // Preserve interrupt status
+                Thread.currentThread().interrupt();
             }
         }
 
@@ -272,13 +351,7 @@ public class CamService extends Service {
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnbind.");
 
-        for (Iterator<Map.Entry<CamSession, FoscamSession>> iterator =
-             cammy.camSessionFoscamSessionMap.entrySet().iterator(); iterator.hasNext(); ) {
-
-            final Map.Entry<CamSession, FoscamSession> entry = iterator.next();
-            iterator.remove();
-            entry.getValue().disconnect();
-        }
+        cammy.shutdown();
 
         stopSelf();
 

@@ -35,6 +35,7 @@ public class CamViewActivity extends Activity {
             updateOnUiThread();
         }
     };
+    private CamService.CamServiceI camService;
 
     private void updateOnUiThread() {
         runOnUiThread(new Runnable() {
@@ -71,12 +72,13 @@ public class CamViewActivity extends Activity {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
                 Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
-                CamService.CamServiceI camService = ((CamService.CamServiceBinder) service)
+                camService = ((CamService.CamServiceBinder) service)
                         .getCamService();
                 camSession = camService.getCamSession(camDef);
                 assert camSession != null;
                 camSession.addObserver(observer);
-                camImage.setImageBitmap(camSession.getCurBitmap());
+                updateOnUiThread();
+                camService.startVideo(camSession);
             }
 
             @Override
@@ -108,6 +110,8 @@ public class CamViewActivity extends Activity {
             updateOnUiThread();
 
             camSession.addObserver(observer);
+
+            camService.startVideo(camSession);
         }
     }
 
@@ -116,6 +120,7 @@ public class CamViewActivity extends Activity {
         Log.d(TAG, "onStop.");
         super.onStop();
         camSession.deleteObserver(observer);
+        camService.stopVideo(camSession);
     }
 
     @Override
