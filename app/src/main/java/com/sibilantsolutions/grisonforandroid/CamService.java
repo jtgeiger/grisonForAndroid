@@ -28,6 +28,7 @@ import com.sibilantsolutions.grisonforandroid.domain.CamStatus;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class CamService extends Service {
@@ -261,9 +262,11 @@ public class CamService extends Service {
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnbind.");
 
-        for (Map.Entry<CamSession, FoscamSession> entry :
-                cammy.camSessionFoscamSessionMap.entrySet()) {
-            cammy.camSessionFoscamSessionMap.remove(entry.getKey());
+        for (Iterator<Map.Entry<CamSession, FoscamSession>> iterator =
+             cammy.camSessionFoscamSessionMap.entrySet().iterator(); iterator.hasNext(); ) {
+
+            final Map.Entry<CamSession, FoscamSession> entry = iterator.next();
+            iterator.remove();
             entry.getValue().disconnect();
         }
 
