@@ -23,6 +23,8 @@ import com.sibilantsolutions.grison.evt.LostConnectionEvt;
 import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
+import com.sibilantsolutions.grisonforandroid.domain.CamSession;
+import com.sibilantsolutions.grisonforandroid.domain.CamStatus;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -39,26 +41,25 @@ public class CamService extends Service {
     public interface CamServiceI {
 
         @Nullable
-        MainActivity.CamSession getCamSession(@NonNull CamDef camDef);
+        CamSession getCamSession(@NonNull CamDef camDef);
 
-        void startCam(final MainActivity.CamSession camSession, final Runnable
-                dataSetChangedCallback);
+        void startCam(final CamSession camSession);
 
-        boolean startVideo(MainActivity.CamSession camSession);
+        boolean startVideo(CamSession camSession);
 
-        void stopVideo(MainActivity.CamSession camSession);
+        void stopVideo(CamSession camSession);
     }
 
     private static class Cammy implements CamServiceI {
 
-        private final Map<MainActivity.CamSession, FoscamSession> camSessionFoscamSessionMap =
+        private final Map<CamSession, FoscamSession> camSessionFoscamSessionMap =
                 new HashMap<>();
 
         @Override
         @Nullable
-        public MainActivity.CamSession getCamSession(@NonNull CamDef camDef) {
-            for (MainActivity.CamSession camSession : camSessionFoscamSessionMap.keySet()) {
-                if (camSession.camDef.equals(camDef)) {
+        public CamSession getCamSession(@NonNull CamDef camDef) {
+            for (CamSession camSession : camSessionFoscamSessionMap.keySet()) {
+                if (camSession.getCamDef().equals(camDef)) {
                     return camSession;
                 }
             }
@@ -66,13 +67,12 @@ public class CamService extends Service {
         }
 
         @Override
-        public void startCam(final MainActivity.CamSession camSession, final Runnable
-                dataSetChangedCallback) {
+        public void startCam(final CamSession camSession) {
             Runnable r = new Runnable() {
 
                 @Override
                 public void run() {
-                    CamDef camDef = camSession.camDef;
+                    CamDef camDef = camSession.getCamDef();
                     String host = camDef.getHost();
                     int port = camDef.getPort();
                     String username = camDef.getUsername();
@@ -97,10 +97,11 @@ public class CamService extends Service {
                             //                        runOnUiThread(new Runnable() {
 //                            @Override
 //                            public void run() {
-                            camSession.curBitmap = BitmapFactory.decodeByteArray(dataContent, 0,
-                                    dataContent.length);
+                            camSession.setCurBitmap(BitmapFactory.decodeByteArray(dataContent, 0,
+                                    dataContent.length));
 //                                notifyDataSetChangedOnUiThread();
-                            dataSetChangedCallback.run();
+//                            dataSetChangedCallback.run();
+                            camSession.notifyObservers();
 //                            }
 //                        });
                         }
@@ -163,45 +164,50 @@ public class CamService extends Service {
                         @Override
                         public void onLostConnection(LostConnectionEvt evt) {
                             Log.i(TAG, "onLostConnection: ");
-                            camSession.camStatus = MainActivity.CamStatus.LOST_CONNECTION;
-                            camSession.reason = "Lost connection";
+                            camSession.setCamStatus(CamStatus.LOST_CONNECTION);
+                            camSession.setReason("Lost connection");
 //                        notifyDataSetChangedOnUiThread();
-                            dataSetChangedCallback.run();
+//                            dataSetChangedCallback.run();
+                            camSession.notifyObservers();
                         }
                     };
 
                     FoscamSession foscamSession;
                     boolean success = false;
                     try {
-                        camSession.camStatus = MainActivity.CamStatus.CONNECTING;
+                        camSession.setCamStatus(CamStatus.CONNECTING);
 //                    notifyDataSetChangedOnUiThread();
-                        dataSetChangedCallback.run();
+//                        dataSetChangedCallback.run();
+                        camSession.notifyObservers();
                         foscamSession = FoscamSession.connect(address, username, password,
                                 audioHandler,
                                 imageHandler, alarmHandler, lostConnHandler);
                         success = foscamSession.videoStart();
 //                        success = true;
-                        camSession.camStatus = success ? MainActivity.CamStatus.CONNECTED :
-                                MainActivity.CamStatus.CANT_CONNECT;
+                        camSession.setCamStatus(success ? CamStatus.CONNECTED :
+                                CamStatus.CANT_CONNECT);
                         if (!success) {
-                            camSession.reason = "Connected but couldn't start video";
+                            camSession.setReason("Connected but couldn't start video");
                             foscamSession.disconnect();
                         } else {
 //                        camSession.foscamSession = foscamSession;
                             camSessionFoscamSessionMap.put(camSession, foscamSession);
                         }
 //                    notifyDataSetChangedOnUiThread();
-                        dataSetChangedCallback.run();
+                        //dataSetChangedCallback.run();
+                        camSession.notifyObservers();
                     } catch (Exception e) {
                         Log.i(TAG, "run: " + address, e);
-                        camSession.camStatus = success ? MainActivity.CamStatus.CONNECTED :
-                                MainActivity.CamStatus.CANT_CONNECT;
-                        camSession.reason = "Could not connect to " + address;
+                        camSession.setCamStatus(success ? CamStatus.CONNECTED :
+                                CamStatus.CANT_CONNECT);
+                        camSession.setReason("Could not connect to " + address);
                         if (e.getLocalizedMessage() != null) {
-                            camSession.reason += ": " + e.getLocalizedMessage();
+                            camSession.setReason(camSession.getReason() + ": " + e
+                                    .getLocalizedMessage());
                         }
 //                    notifyDataSetChangedOnUiThread();
-                        dataSetChangedCallback.run();
+//                        dataSetChangedCallback.run();
+                        camSession.notifyObservers();
                     }
 //                Log.i(TAG, "run: videoStart success=" + success);
 //                boolean audioStartSuccess = foscamSession.audioStart();
@@ -217,13 +223,13 @@ public class CamService extends Service {
         }
 
         @Override
-        public boolean startVideo(MainActivity.CamSession camSession) {
+        public boolean startVideo(CamSession camSession) {
             final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
             return foscamSession != null && foscamSession.videoStart();
         }
 
         @Override
-        public void stopVideo(MainActivity.CamSession camSession) {
+        public void stopVideo(CamSession camSession) {
             final FoscamSession foscamSession = camSessionFoscamSessionMap.get(camSession);
             if (foscamSession != null) {
                 foscamSession.videoEnd();

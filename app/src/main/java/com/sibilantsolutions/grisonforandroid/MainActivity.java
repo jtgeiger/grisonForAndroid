@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
@@ -29,6 +28,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
+import com.sibilantsolutions.grisonforandroid.domain.CamSession;
+import com.sibilantsolutions.grisonforandroid.domain.CamStatus;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,6 +43,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
@@ -58,6 +61,12 @@ public class MainActivity extends ListActivity {
     private MyCamArrayAdapter myCamArrayAdapter;
     private ActionMode mActionMode;
     private CamService.CamServiceI camService;
+    final private Observer observer = new Observer() {
+        @Override
+        public void update(Observable o, Object arg) {
+            notifyDataSetChangedOnUiThread();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,9 +83,8 @@ public class MainActivity extends ListActivity {
         if (strings != null) {
             for (String str : strings) {
                 final CamDef camDef = deserialize(str);
-                CamSession camSession = new CamSession();
-                camSession.camDef = camDef;
-                camSession.camStatus = CamStatus.CONNECTING;
+                CamSession camSession = new CamSession(camDef);
+                camSession.setCamStatus(CamStatus.CONNECTING);
                 camSessions.add(camSession);
             }
         }
@@ -93,7 +101,7 @@ public class MainActivity extends ListActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final CamSession camSession = myCamArrayAdapter.getItem(position);
                 assert camSession != null;
-                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession.camDef));
+                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession.getCamDef()));
             }
         });
 
@@ -167,7 +175,7 @@ public class MainActivity extends ListActivity {
             for (Iterator<String> iter = strings.iterator(); iter.hasNext(); ) {
                 String camDefStr = iter.next();
                 CamDef camDef = deserialize(camDefStr);
-                if (camSession.camDef.equals(camDef)) {
+                if (camSession.getCamDef().equals(camDef)) {
                     iter.remove();
                     break;
                 }
@@ -204,19 +212,14 @@ public class MainActivity extends ListActivity {
             editor.putStringSet(KEY_CAM_DEFS, strings);
             editor.apply();
 
-            CamSession camSession = new CamSession();
-            camSession.camDef = camDef;
-            camSession.camStatus = CamStatus.CONNECTING;
+            CamSession camSession = new CamSession(camDef);
+            camSession.setCamStatus(CamStatus.CONNECTING);
 
             myCamArrayAdapter.add(camSession);
 
 //            startCam(camSession);
-            camService.startCam(camSession, new Runnable() {
-                @Override
-                public void run() {
-                    notifyDataSetChangedOnUiThread();
-                }
-            });
+            camSession.addObserver(observer);
+            camService.startCam(camSession);
         }
     }
 
@@ -249,21 +252,6 @@ public class MainActivity extends ListActivity {
 
         final byte[] bytes = byteArrayOutputStream.toByteArray();
         return new String(bytes, ISO_8859_1);
-    }
-
-    enum CamStatus {
-        CONNECTING,
-        CONNECTED,
-        CANT_CONNECT,
-        LOST_CONNECTION
-    }
-
-    static class CamSession {
-        CamDef camDef;
-        CamStatus camStatus;
-        String reason = "UNKNOWN";
-        Bitmap curBitmap;
-//        FoscamSession foscamSession;
     }
 
     private static class MyCamArrayAdapter extends ArrayAdapter<CamSession> {
@@ -303,28 +291,29 @@ public class MainActivity extends ListActivity {
 
             CamSession camSession = getItem(position);
             assert camSession != null;
-            CamDef camDef = camSession.camDef;
+            CamDef camDef = camSession.getCamDef();
             viewHolder.camName.setText(camDef.getName());
             viewHolder.camAddress.setText(String.format(Locale.ROOT, "%s@%s:%d", camDef.getUsername(), camDef.getHost
                     (), camDef.getPort()));
 
-            switch (camSession.camStatus) {
+            switch (camSession.getCamStatus()) {
                 case CANT_CONNECT:
                 case LOST_CONNECTION:
                     viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
                     viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
                             .ic_dialog_alert));
                     viewHolder.camPreview.setVisibility(View.VISIBLE);
-                    viewHolder.camStatus.setText(camSession.reason);
+                    viewHolder.camStatus.setText(camSession.getReason());
                     break;
 
                 case CONNECTED:
                     viewHolder.camLoadingProgressBar.setVisibility(View.INVISIBLE);
                     viewHolder.camStatus.setText(R.string.connected);
-                    if (camSession.curBitmap != null) {
-                        viewHolder.camPreview.setImageBitmap(camSession.curBitmap);
-                        viewHolder.camStatus.append(String.format(Locale.ROOT, " (%d x %d)", camSession.curBitmap
-                                .getWidth(), camSession.curBitmap.getHeight()));
+                    if (camSession.getCurBitmap() != null) {
+                        viewHolder.camPreview.setImageBitmap(camSession.getCurBitmap());
+                        viewHolder.camStatus.append(String.format(Locale.ROOT, " (%d x %d)",
+                                camSession.getCurBitmap()
+                                        .getWidth(), camSession.getCurBitmap().getHeight()));
                     } else {
                         viewHolder.camPreview.setImageDrawable(getContext().getDrawable(android.R.drawable
                                 .ic_menu_camera));
@@ -339,7 +328,7 @@ public class MainActivity extends ListActivity {
                     break;
 
                 default:
-                    throw new IllegalArgumentException("Unexpected status=" + camSession.camStatus);
+                    throw new IllegalArgumentException("Unexpected status=" + camSession.getCamStatus());
             }
 
             return convertView;
@@ -362,12 +351,9 @@ public class MainActivity extends ListActivity {
 
                 for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
                     CamSession camSession = myCamArrayAdapter.getItem(i);
-                    camService.startCam(camSession, new Runnable() {
-                        @Override
-                        public void run() {
-                            notifyDataSetChangedOnUiThread();
-                        }
-                    });
+                    assert camSession != null;
+                    camSession.addObserver(observer);
+                    camService.startCam(camSession);
 //                    camService.startVideo(camSession);
                 }
             }
@@ -560,7 +546,8 @@ public class MainActivity extends ListActivity {
 //                camSession.foscamSession.disconnect();
 //                camSession.foscamSession = null;
 //            }
-            camService.stopVideo(camSession);
+            camSession.deleteObserver(observer);
+//            camService.stopVideo(camSession);
         }
     }
 

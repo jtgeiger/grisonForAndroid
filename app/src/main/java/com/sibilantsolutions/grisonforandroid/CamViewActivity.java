@@ -13,6 +13,10 @@ import android.util.Log;
 import android.widget.ImageView;
 
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
+import com.sibilantsolutions.grisonforandroid.domain.CamSession;
+
+import java.util.Observable;
+import java.util.Observer;
 
 public class CamViewActivity extends Activity {
 
@@ -23,6 +27,24 @@ public class CamViewActivity extends Activity {
     private CamDef camDef;
     private ImageView camImage;
     private ServiceConnection serviceConnection;
+
+    final private Observer observer = new Observer() {
+        @Override
+        public void update(Observable o, Object arg) {
+            updateOnUiThread();
+        }
+    };
+
+    private void updateOnUiThread() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                camImage.setImageBitmap(camSession.getCurBitmap());
+            }
+        });
+    }
+
+    private CamSession camSession;
 
     public static Intent newIntent(Context context, CamDef camDef) {
         final Intent intent = new Intent(context, CamViewActivity.class);
@@ -50,9 +72,10 @@ public class CamViewActivity extends Activity {
                 Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
                 CamService.CamServiceI camService = ((CamService.CamServiceBinder) service)
                         .getCamService();
-                final MainActivity.CamSession camSession = camService.getCamSession(camDef);
+                camSession = camService.getCamSession(camDef);
                 assert camSession != null;
-                camImage.setImageBitmap(camSession.curBitmap);
+                camSession.addObserver(observer);
+                camImage.setImageBitmap(camSession.getCurBitmap());
             }
 
             @Override
@@ -69,6 +92,13 @@ public class CamViewActivity extends Activity {
         Log.d(TAG, "onDestroy.");
         super.onDestroy();
         unbindService(serviceConnection);
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d(TAG, "onStop.");
+        super.onStop();
+        camSession.deleteObserver(observer);
     }
 
 }
