@@ -102,6 +102,11 @@ public class CamViewActivity extends Activity {
 
         //Service might not be bound yet.
         if (camSession != null) {
+
+            //Make sure to show the current state of the session without having to wait for an
+            // update.
+            updateOnUiThread();
+
             camSession.addObserver(observer);
         }
     }

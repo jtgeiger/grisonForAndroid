@@ -393,6 +393,9 @@ public class MainActivity extends ListActivity {
 //            });
 //        }
 
+        //Make sure to show the current state of the session without having to wait for an update.
+        notifyDataSetChangedOnUiThread();
+
         for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
             CamSession camSession = myCamArrayAdapter.getItem(i);
             assert camSession != null;
