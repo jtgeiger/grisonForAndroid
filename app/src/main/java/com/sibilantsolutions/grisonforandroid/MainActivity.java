@@ -67,6 +67,26 @@ public class MainActivity extends ListActivity {
             notifyDataSetChangedOnUiThread();
         }
     };
+    final private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
+            camService = ((CamService.CamServiceBinder) service).getCamService();
+
+            for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
+                CamSession camSession = myCamArrayAdapter.getItem(i);
+                assert camSession != null;
+                camSession.addObserver(observer);
+                camService.startCam(camSession);
+//                    camService.startVideo(camSession);
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "onServiceDisconnected: name=" + name);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +110,11 @@ public class MainActivity extends ListActivity {
         }
 
         startService(CamService.newIntent(this));
+
+
+        final boolean boundService = bindService(new Intent(this, CamService.class), serviceConnection, BIND_AUTO_CREATE);
+
+        Log.d(TAG, "onStart: bound service=" + boundService);
 
 
         myCamArrayAdapter = new MyCamArrayAdapter(this, camSessions);
@@ -118,6 +143,14 @@ public class MainActivity extends ListActivity {
                 return true;
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d(TAG, "onDestroy.");
+        super.onDestroy();
+
+        unbindService(serviceConnection);
     }
 
     private Callback actionModeCallback(final int position) {
@@ -342,30 +375,6 @@ public class MainActivity extends ListActivity {
 
         super.onStart();
 
-        final boolean boundService = bindService(new Intent(this, CamService.class), new
-                ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                Log.d(TAG, "onServiceConnected: name=" + name + ", service=" + service);
-                camService = ((CamService.CamServiceBinder) service).getCamService();
-
-                for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
-                    CamSession camSession = myCamArrayAdapter.getItem(i);
-                    assert camSession != null;
-                    camSession.addObserver(observer);
-                    camService.startCam(camSession);
-//                    camService.startVideo(camSession);
-                }
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                Log.d(TAG, "onServiceDisconnected: name=" + name);
-            }
-        }, BIND_AUTO_CREATE);
-
-        Log.d(TAG, "onStart: bound service=" + boundService);
-
 
 //        for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
 //            CamSession camSession = myCamArrayAdapter.getItem(i);
@@ -377,6 +386,12 @@ public class MainActivity extends ListActivity {
 //                }
 //            });
 //        }
+
+        for (int i = 0; i < myCamArrayAdapter.getCount(); i++) {
+            CamSession camSession = myCamArrayAdapter.getItem(i);
+            assert camSession != null;
+            camSession.addObserver(observer);
+        }
 
     }
 

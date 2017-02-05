@@ -260,6 +260,13 @@ public class CamService extends Service {
     @Override
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "onUnbind.");
+
+        for (Map.Entry<CamSession, FoscamSession> entry :
+                cammy.camSessionFoscamSessionMap.entrySet()) {
+            cammy.camSessionFoscamSessionMap.remove(entry.getKey());
+            entry.getValue().disconnect();
+        }
+
         return super.onUnbind(intent);
     }
 

@@ -95,6 +95,17 @@ public class CamViewActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        Log.d(TAG, "onStart.");
+        super.onStart();
+
+        //Service might not be bound yet.
+        if (camSession != null) {
+            camSession.addObserver(observer);
+        }
+    }
+
+    @Override
     protected void onStop() {
         Log.d(TAG, "onStop.");
         super.onStop();
