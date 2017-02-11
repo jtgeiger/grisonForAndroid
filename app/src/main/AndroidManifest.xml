@@ -10,11 +10,23 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <!-- For Samsung MultiWindow support (deprecated on API 24+). -->
+        <uses-library
+            android:required="false"
+            android:name="com.sec.android.app.multiwindow"/>
+        <meta-data
+            android:name="com.sec.android.support.multiwindow"
+            android:value="true"/>
+
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
+
+                <!-- For Samsung MultiWindow support (deprecated on API 24+). -->
+                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER"/>
             </intent-filter>
         </activity>
         <activity android:name=".AddCamActivity">
