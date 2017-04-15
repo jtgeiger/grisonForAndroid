@@ -50,9 +50,9 @@ import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
-public class MainActivity extends ListActivity {
+public class CamListActivity extends ListActivity {
 
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = CamListActivity.class.getSimpleName();
     private static final int REQ_ADD_CAM = 1;
     public static final String KEY_CAM_DEFS = "KEY_CAM_DEFS";
 //    private AudioTrack audioTrack;
@@ -104,7 +104,7 @@ public class MainActivity extends ListActivity {
         Log.d(TAG, "onCreate.");
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_cam_list);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -139,9 +139,10 @@ public class MainActivity extends ListActivity {
                 assert camSession != null;
                 final View camImageView = view.findViewById(R.id.cam_image_preview);
                 final ActivityOptions activityOptions = ActivityOptions
-                        .makeSceneTransitionAnimation(MainActivity.this, camImageView, getString
+                        .makeSceneTransitionAnimation(CamListActivity.this, camImageView, getString
                                 (R.string.camera_image_trans));
-                startActivity(CamViewActivity.newIntent(MainActivity.this, camSession.getCamDef()),
+                startActivity(CamViewActivity.newIntent(CamListActivity.this, camSession
+                                .getCamDef()),
                         activityOptions.toBundle());
             }
         });
@@ -308,7 +309,7 @@ public class MainActivity extends ListActivity {
 
     private static class MyCamArrayAdapter extends ArrayAdapter<CamSession> {
 
-        MyCamArrayAdapter(MainActivity context, List<CamSession> objects) {
+        MyCamArrayAdapter(CamListActivity context, List<CamSession> objects) {
             super(context, R.layout.card_cam_summary, objects);
         }
 

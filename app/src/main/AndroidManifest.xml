@@ -19,7 +19,7 @@
             android:name="com.sec.android.support.multiwindow"
             android:value="true"/>
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".CamListActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -41,10 +41,10 @@
         <activity
             android:name=".CamViewActivity"
             android:label="@string/title_activity_cam_view"
-            android:parentActivityName=".MainActivity">
+            android:parentActivityName=".CamListActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.sibilantsolutions.grisonforandroid.MainActivity"/>
+                android:value="com.sibilantsolutions.grisonforandroid.CamListActivity"/>
         </activity>
     </application>
 

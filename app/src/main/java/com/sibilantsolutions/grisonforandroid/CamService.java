@@ -371,12 +371,12 @@ public class CamService extends Service {
 
     public class CamServiceBinder extends Binder {
 
-//        public void startCam(MainActivity.CamSession camSession, Runnable
+//        public void startCam(CamListActivity.CamSession camSession, Runnable
 // dataSetChangedCallback) {
 //            CamService.this.startCam(camSession, dataSetChangedCallback);
 //        }
 //
-//        public FoscamSession getFoscamSession(MainActivity.CamSession camSession) {
+//        public FoscamSession getFoscamSession(CamListActivity.CamSession camSession) {
 //            return camSessionFoscamSessionMap.get(camSession);
 //        }
 
