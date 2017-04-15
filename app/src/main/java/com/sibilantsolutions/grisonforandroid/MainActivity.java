@@ -13,5 +13,9 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.main_toolbar);
         setSupportActionBar(toolbar);
+
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.main_content, new CamListFragment())
+                .commit();
     }
 }
