@@ -14,6 +14,13 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.main_toolbar);
         setSupportActionBar(toolbar);
 
+        //if we're being restored from a previous state,
+        // then we don't need to do anything and should return or else
+        // we could end up with overlapping fragments.
+        if (savedInstanceState != null) {
+            return;
+        }
+
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.main_content, new CamListFragment())
                 .commit();
