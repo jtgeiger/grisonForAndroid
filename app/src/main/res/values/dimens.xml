@@ -8,4 +8,5 @@
     <dimen name="card_padding">10dp</dimen>
     <dimen name="card_divider">10dp</dimen>
     <dimen name="card_corner_radius">2dp</dimen>
+    <dimen name="appBarElevation">4dp</dimen>
 </resources>

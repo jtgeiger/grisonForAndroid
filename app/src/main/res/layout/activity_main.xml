@@ -19,7 +19,8 @@
             android:layout_width="match_parent"
             android:minHeight="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
-            app:theme="@style/ThemeOverlay.AppCompat.ActionBar"/>
+            app:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+            android:elevation="@dimen/appBarElevation"/>
 
         <FrameLayout
             android:id="@+id/main_content"
