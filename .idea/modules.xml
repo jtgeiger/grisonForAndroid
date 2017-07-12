@@ -3,7 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/grisonForAndroid.iml" filepath="$PROJECT_DIR$/grisonForAndroid.iml" />
+      <module fileurl="file://$PROJECT_DIR$/grisonforandroid.iml" filepath="$PROJECT_DIR$/grisonforandroid.iml" />
     </modules>
   </component>
 </project>
