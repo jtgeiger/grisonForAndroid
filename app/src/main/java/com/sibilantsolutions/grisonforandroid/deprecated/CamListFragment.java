@@ -1,4 +1,4 @@
-package com.sibilantsolutions.grisonforandroid;
+package com.sibilantsolutions.grisonforandroid.deprecated;
 
 import android.content.Context;
 import android.graphics.Rect;
@@ -13,6 +13,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.sibilantsolutions.grisonforandroid.R;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -1,4 +1,4 @@
-package com.sibilantsolutions.grisonforandroid;
+package com.sibilantsolutions.grisonforandroid.deprecated;
 
 import android.app.ActionBar;
 import android.app.Activity;
@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.widget.ImageView;
 
+import com.sibilantsolutions.grisonforandroid.R;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 import com.sibilantsolutions.grisonforandroid.domain.CamSession;
 

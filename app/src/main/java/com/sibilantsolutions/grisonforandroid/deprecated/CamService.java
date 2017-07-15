@@ -1,4 +1,4 @@
-package com.sibilantsolutions.grisonforandroid;
+package com.sibilantsolutions.grisonforandroid.deprecated;
 
 import android.app.Service;
 import android.content.Context;

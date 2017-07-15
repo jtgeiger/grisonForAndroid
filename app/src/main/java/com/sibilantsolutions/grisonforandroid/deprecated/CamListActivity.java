@@ -1,4 +1,4 @@
-package com.sibilantsolutions.grisonforandroid;
+package com.sibilantsolutions.grisonforandroid.deprecated;
 
 import android.app.ActivityOptions;
 import android.app.ListActivity;
@@ -28,6 +28,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.sibilantsolutions.grisonforandroid.R;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 import com.sibilantsolutions.grisonforandroid.domain.CamSession;
 import com.sibilantsolutions.grisonforandroid.domain.CamStatus;

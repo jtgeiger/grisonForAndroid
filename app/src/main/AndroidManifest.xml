@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.sibilantsolutions.grisonforandroid">
+    package="com.sibilantsolutions.grisonforandroid">
 
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="false"
@@ -14,12 +14,12 @@
         <!-- For Samsung MultiWindow support (deprecated on API 24+). -->
         <uses-library
             android:name="com.sec.android.app.multiwindow"
-            android:required="false"/>
+            android:required="false" />
 
         <!-- For Samsung MultiWindow support (deprecated on API 24+). -->
         <meta-data
             android:name="com.sec.android.support.multiwindow"
-            android:value="true"/>
+            android:value="true" />
 
         <activity android:name=".MainActivity">
             <intent-filter>
@@ -30,26 +30,6 @@
                 <!-- For Samsung MultiWindow support (deprecated on API 24+). -->
                 <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER"/>
             </intent-filter>
-        </activity>
-
-        <activity android:name=".CamListActivity">
-        </activity>
-        <activity android:name=".AddCamActivity">
-        </activity>
-
-        <service
-            android:name=".CamService"
-            android:enabled="true"
-            android:exported="false">
-        </service>
-
-        <activity
-            android:name=".CamViewActivity"
-            android:label="@string/title_activity_cam_view"
-            android:parentActivityName=".CamListActivity">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.sibilantsolutions.grisonforandroid.CamListActivity"/>
         </activity>
 
     </application>
