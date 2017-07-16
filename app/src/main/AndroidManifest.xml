@@ -21,7 +21,9 @@
             android:name="com.sec.android.support.multiwindow"
             android:value="true" />
 
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".MainActivity"
+            android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 

@@ -11,6 +11,10 @@
         <item name="android:textColorSecondary">@color/secondary_text</item>
     </style>
 
+    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/background_splash</item>
+    </style>
+
     <style name="AppTheme.FAB" parent="AppTheme">
         <item name="android:tint">@color/icons</item>
         <item name="android:backgroundTint">@color/accent</item>
