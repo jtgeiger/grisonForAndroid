@@ -10,4 +10,5 @@
     <dimen name="card_corner_radius">2dp</dimen>
     <dimen name="appBarElevation">4dp</dimen>
     <dimen name="grid_item_offset">4dp</dimen>
+    <dimen name="fab_margin">16dp</dimen>
 </resources>

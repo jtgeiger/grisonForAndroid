@@ -25,15 +25,18 @@
             android:name=".MainActivity"
             android:theme="@style/SplashTheme">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LAUNCHER" />
 
                 <!-- For Samsung MultiWindow support (deprecated on API 24+). -->
-                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER"/>
+                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" />
             </intent-filter>
         </activity>
-
+        <activity
+            android:name=".CamListActivity"
+            android:label="@string/title_activity_cam_list"
+            android:theme="@style/AppTheme"></activity>
     </application>
 
 </manifest>
