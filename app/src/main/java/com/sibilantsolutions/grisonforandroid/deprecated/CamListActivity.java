@@ -28,6 +28,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.sibilantsolutions.grisonforandroid.AddCamActivity;
 import com.sibilantsolutions.grisonforandroid.R;
 import com.sibilantsolutions.grisonforandroid.domain.CamDef;
 import com.sibilantsolutions.grisonforandroid.domain.CamSession;
@@ -254,7 +255,8 @@ public class CamListActivity extends ListActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.d(TAG, "onActivityResult.");
         if (requestCode == REQ_ADD_CAM && resultCode == RESULT_OK) {
-            final CamDef camDef = (CamDef) data.getSerializableExtra(AddCamActivity.EXTRA_CAM_DEF);
+//            final CamDef camDef = (CamDef) data.getSerializableExtra(AddCamActivity.EXTRA_CAM_DEF);
+            final CamDef camDef = (CamDef) data.getSerializableExtra("DEPRECATED_NO_LONGER_WORKS");
 
             Set<String> strings = sharedPreferences.getStringSet(KEY_CAM_DEFS, null);
             if (strings == null) {
