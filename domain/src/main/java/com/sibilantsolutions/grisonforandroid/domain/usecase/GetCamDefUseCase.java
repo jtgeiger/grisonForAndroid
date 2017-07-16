@@ -4,23 +4,23 @@ import com.sibilantsolutions.grisonforandroid.domain.model.CamDef;
 import com.sibilantsolutions.grisonforandroid.domain.repository.CamDefRepository;
 
 /**
- * Add a camera definition to the repository.
+ * Get a camera definition from the repository.
  * <p>
  * Created by jt on 7/16/17.
  */
 
-public class AddCamDefUseCase implements UseCase<CamDef, Integer> {
+public class GetCamDefUseCase implements UseCase<Integer, CamDef> {
 
     private final CamDefRepository camDefRepository;
 
-    public AddCamDefUseCase(CamDefRepository camDefRepository) {
+    public GetCamDefUseCase(CamDefRepository camDefRepository) {
         this.camDefRepository = camDefRepository;
     }
 
     @Override
-    public void execute(CamDef parameter, Callback<Integer> callback) {
+    public void execute(Integer parameter, Callback<CamDef> callback) {
         try {
-            callback.onSuccess(camDefRepository.add(parameter));
+            callback.onSuccess(camDefRepository.get(parameter));
         } catch (Exception e) {
             callback.onError(new RuntimeException(e));
         }
