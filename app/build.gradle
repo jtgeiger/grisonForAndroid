@@ -1,19 +1,15 @@
 apply plugin: 'com.android.application'
 
-repositories {
-    mavenLocal()
-}
-
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion myVersions.compileSdk
+    buildToolsVersion myVersions.buildTools
 
     defaultConfig {
         applicationId "com.sibilantsolutions.grisonforandroid"
-        minSdkVersion 23
-        targetSdkVersion 25
-        versionCode 1
-        versionName "1.0"
+        minSdkVersion myVersions.minSdk
+        targetSdkVersion myVersions.targetSdk
+        versionCode myVersions.code
+        versionName myVersions.name
     }
     buildTypes {
         release {
@@ -26,15 +22,13 @@ android {
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    //compile 'org.slf4j:slf4j-api:1.7.21'
-    //compile 'org.slf4j:slf4j-android:1.7.21'
-    compile 'com.sibilantsolutions.grison:grison:0.0.4'
-    compile 'ch.qos.logback:logback-classic:1.1.7'
-    compile 'com.android.support:cardview-v7:25.3.1'
-    compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.android.support:design:25.3.1'
-    compile 'com.android.support.constraint:constraint-layout:1.0.2'
-    testCompile 'junit:junit:4.12'
+    compile myLibraries.grison
+    compile myLibraries.logbackClassic
+    compile myLibraries.supportCardView
+    compile myLibraries.supportAppCompat
+    compile myLibraries.supportDesign
+    compile myLibraries.constraintLayout
+    testCompile myLibraries.junit
     compile project(path: ':domain')
     compile project(path: ':data')
 }

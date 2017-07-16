@@ -1,0 +1,35 @@
+ext.myVersions = [
+        code            : 1,
+        name            : '1.0',
+        minSdk          : 23,
+        targetSdk       : 25,
+        compileSdk      : 25,
+        buildTools      : '25.0.2',
+
+        // android
+        supportLibs     : '25.3.1',
+        constraintLayout: '1.0.2',
+        espresso        : '2.2.2',
+
+        // 3rd
+        grison          : '0.0.4',
+        logbackClassic  : '1.1.7',
+        junit           : '4.12',
+]
+
+ext.myLibraries = [
+
+        // android
+        supportAnnotations : "com.android.support:support-annotations:$myVersions.supportLibs",
+        supportAppCompat   : "com.android.support:appcompat-v7:$myVersions.supportLibs",
+        supportCardView    : "com.android.support:cardview-v7:$myVersions.supportLibs",
+        supportDesign      : "com.android.support:design:$myVersions.supportLibs",
+        supportRecyclerView: "com.android.support:recyclerview-v7:$myVersions.supportLibs",
+        constraintLayout   : "com.android.support.constraint:constraint-layout:$myVersions.constraintLayout",
+        espressoCore       : "com.android.support.test.espresso:espresso-core:$myVersions.espresso",
+
+        // 3rd
+        grison             : "com.sibilantsolutions.grison:grison:$myVersions.grison",
+        logbackClassic     : "ch.qos.logback:logback-classic:$myVersions.logbackClassic",
+        junit              : "junit:junit:$myVersions.junit",
+]
