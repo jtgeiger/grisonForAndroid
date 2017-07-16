@@ -105,7 +105,7 @@ public class CamListActivity extends ListActivity {
         Log.d(TAG, "onCreate.");
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_cam_list);
+        setContentView(R.layout.activity_cam_list_deprecated);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
