@@ -26,18 +26,19 @@ public class AddCamPresenter implements AddCamContract.Presenter {
 
     @Override
     public void addCamDef(CamDef camDef) {
-        addCamDefUseCase.execute(camDef, new UseCase.Callback<Integer>() {
-            @Override
-            public void onSuccess(Integer result) {
-                view.returnToList();
-            }
+        addCamDefUseCase.execute(camDef, new MainThreadUseCaseCallbackDecorator<>(
+                new UseCase.Callback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) {
+                        view.returnToList();
+                    }
 
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "onError: Trouble adding camdef", new RuntimeException(e));
-                view.showError();
-            }
-        });
+                    @Override
+                    public void onError(Exception e) {
+                        Log.e(TAG, "onError: Trouble adding camdef", new RuntimeException(e));
+                        view.showError();
+                    }
+                }));
     }
 
 }

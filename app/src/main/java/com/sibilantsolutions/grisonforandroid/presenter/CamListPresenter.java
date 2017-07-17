@@ -28,17 +28,18 @@ public class CamListPresenter implements CamListContract.Presenter {
 
     @Override
     public void getAllCamDefs() {
-        getAllCamDefsUseCase.execute(null, new UseCase.Callback<List<CamDef>>() {
-            @Override
-            public void onSuccess(List<CamDef> result) {
-                view.showAllCamDefs(result);
-            }
+        getAllCamDefsUseCase.execute(null, new MainThreadUseCaseCallbackDecorator<>(
+                new UseCase.Callback<List<CamDef>>() {
+                    @Override
+                    public void onSuccess(List<CamDef> result) {
+                        view.showAllCamDefs(result);
+                    }
 
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "onError: Trouble getting all camdefs", new RuntimeException(e));
-                view.showError();
-            }
-        });
+                    @Override
+                    public void onError(Exception e) {
+                        Log.e(TAG, "onError: Trouble getting all camdefs", new RuntimeException(e));
+                        view.showError();
+                    }
+                }));
     }
 }

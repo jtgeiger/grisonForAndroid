@@ -4,6 +4,7 @@ import com.sibilantsolutions.grisonforandroid.domain.model.CamDef;
 import com.sibilantsolutions.grisonforandroid.domain.repository.CamDefRepository;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 /**
  * Get all camera definitions from the repository.
@@ -14,17 +15,29 @@ import java.util.List;
 public class GetAllCamDefsUseCase implements UseCase<Void, List<CamDef>> {
 
     private final CamDefRepository camDefRepository;
+    private final Executor executor;
 
     public GetAllCamDefsUseCase(CamDefRepository camDefRepository) {
+        this(camDefRepository, UseCaseExecutor.getInstance().getExecutorService());
+    }
+
+    public GetAllCamDefsUseCase(CamDefRepository camDefRepository, Executor executor) {
         this.camDefRepository = camDefRepository;
+        this.executor = executor;
     }
 
     @Override
-    public void execute(Void parameter, Callback<List<CamDef>> callback) {
-        try {
-            callback.onSuccess(camDefRepository.getAll());
-        } catch (Exception e) {
-            callback.onError(new RuntimeException(e));
-        }
+    public void execute(Void parameter, final Callback<List<CamDef>> callback) {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    callback.onSuccess(camDefRepository.getAll());
+                } catch (Exception e) {
+                    callback.onError(new RuntimeException(e));
+                }
+
+            }
+        });
     }
 }
