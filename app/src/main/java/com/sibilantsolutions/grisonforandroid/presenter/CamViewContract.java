@@ -23,6 +23,9 @@ public interface CamViewContract {
 
         @UiThread
         void disconnect();
+
+        @UiThread
+        void setVideo(boolean isVideoOn);
     }
 
     interface View {
@@ -35,6 +38,13 @@ public interface CamViewContract {
 
         @UiThread
         void onImageReceived(Bitmap bitmap);
+
+        @UiThread
+        void setVideo(boolean isVideoOn);
+
+        @UiThread
+        void setVideoChangeEnabled(boolean isVideoChangeEnabled);
+
     }
 
 }

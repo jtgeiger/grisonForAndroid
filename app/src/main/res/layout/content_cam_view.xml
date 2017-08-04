@@ -15,5 +15,13 @@
         android:src="@drawable/ic_video_call_black_24px"
         android:contentDescription="@string/camera_image" />
 
+    <Switch
+        android:id="@+id/video_on_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:text="Video"
+        android:onClick="onClickVideoSwitch" />
+
 
 </android.support.constraint.ConstraintLayout>

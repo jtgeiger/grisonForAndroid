@@ -23,6 +23,7 @@ import com.sibilantsolutions.grisonforandroid.domain.usecase.GetCamDefUseCase;
 import com.sibilantsolutions.grisonforandroid.domain.usecase.UseCase;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 
@@ -38,7 +39,14 @@ public class CamViewPresenter implements CamViewContract.Presenter {
     private final GetCamDefUseCase getCamDefUseCase;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private volatile FoscamSession foscamSession;
+
+    /**
+     * This should always, only, be accessed fron the executor thread.
+     */
+    private FoscamSession foscamSession;
+
+    //TOOD: Proper use case.
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
 
     public CamViewPresenter(CamViewContract.View view, GetCamDefUseCase getCamDefUseCase) {
@@ -74,18 +82,63 @@ public class CamViewPresenter implements CamViewContract.Presenter {
                         camDef.getUsername(), camDef.getPassword(), newAudioHandler(), newImageHandler(),
                         newAlarmHandler(), newLostConnectionHandler());
 //                foscamSession.audioStart();
-                foscamSession.videoStart();
+                final boolean isVideoStarted = foscamSession.videoStart();
+
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        view.setVideo(isVideoStarted);
+                        view.setVideoChangeEnabled(true);
+                    }
+                });
             }
         };
-        //TODO: Proper use case.
-        Executors.newSingleThreadExecutor().execute(runnable);
+        executor.execute(runnable);
     }
 
     @Override
     public void disconnect() {
-        if (foscamSession != null) {
-            foscamSession.disconnect();
-        }
+        Runnable runnable = new Runnable() {
+            public void run() {
+                if (foscamSession != null) {
+                    foscamSession.disconnect();
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            view.setVideo(false);
+                            view.setVideoChangeEnabled(false);
+                        }
+                    });
+                }
+            }
+        };
+        executor.execute(runnable);
+    }
+
+    @Override
+    public void setVideo(final boolean isVideoOn) {
+        Runnable runnable = new Runnable() {
+            public void run() {
+                if (foscamSession != null) {
+                    final boolean isVideoStarted;
+                    if (isVideoOn) {
+                        isVideoStarted = foscamSession.videoStart();
+                    } else {
+                        foscamSession.videoEnd();
+                        isVideoStarted = false;
+                    }
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            view.setVideo(isVideoStarted);
+                        }
+                    });
+                }
+            }
+        };
+        executor.execute(runnable);
     }
 
     private LostConnectionHandlerI newLostConnectionHandler() {

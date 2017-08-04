@@ -8,7 +8,9 @@ import android.support.annotation.UiThread;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.Switch;
 
 import com.sibilantsolutions.grisonforandroid.data.repository.SharedPreferencesCamDefRepositoryImpl;
 import com.sibilantsolutions.grisonforandroid.domain.model.CamDef;
@@ -21,6 +23,7 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
     private static final String EXTRA_CAM_ID = "EXTRA_CAM_ID";
     private CamViewPresenter presenter;
     private ImageView imageView;
+    private Switch videoOnSwitch;
 
     public static Intent newIntent(Context context, int camId) {
         final Intent intent = new Intent(context, CamViewActivity.class);
@@ -39,6 +42,8 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
         presenter = new CamViewPresenter(this, new GetCamDefUseCase(new SharedPreferencesCamDefRepositoryImpl(this)));
 
         imageView = (ImageView) findViewById(R.id.image_view);
+
+        videoOnSwitch = (Switch) findViewById(R.id.video_on_switch);
     }
 
     @Override
@@ -71,6 +76,23 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
     @UiThread
     public void onImageReceived(Bitmap bitmap) {
         imageView.setImageBitmap(bitmap);
+    }
+
+    @Override
+    @UiThread
+    public void setVideo(boolean isVideoOn) {
+        videoOnSwitch.setChecked(isVideoOn);
+    }
+
+    @Override
+    @UiThread
+    public void setVideoChangeEnabled(boolean isVideoChangeEnabled) {
+        videoOnSwitch.setEnabled(isVideoChangeEnabled);
+    }
+
+    @UiThread
+    public void onClickVideoSwitch(View view) {
+        presenter.setVideo(videoOnSwitch.isChecked());
     }
 
 }
