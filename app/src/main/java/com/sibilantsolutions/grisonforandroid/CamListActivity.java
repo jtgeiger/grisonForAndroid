@@ -63,7 +63,7 @@ public class CamListActivity extends AppCompatActivity implements CamListContrac
 
     @Override
     public void showAllCamDefs(List<CamDef> camDefs) {
-        recyclerView.swapAdapter(new MyAdapter(camDefs), false);
+        recyclerView.swapAdapter(new MyAdapter(camDefs, this), false);
     }
 
     @Override
@@ -73,9 +73,11 @@ public class CamListActivity extends AppCompatActivity implements CamListContrac
 
     private static class MyAdapter extends RecyclerView.Adapter<MyViewHolder> {
         private final List<CamDef> camDefs;
+        private final Context context;
 
-        public MyAdapter(List<CamDef> camDefs) {
+        public MyAdapter(List<CamDef> camDefs, Context context) {
             this.camDefs = camDefs;
+            this.context = context;
             setHasStableIds(true);
         }
 
@@ -83,7 +85,7 @@ public class CamListActivity extends AppCompatActivity implements CamListContrac
         public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             final View view = LayoutInflater.from(parent.getContext()).inflate(R.layout
                     .main_cam_tile, parent, false);
-            return new MyViewHolder(view);
+            return new MyViewHolder(view, context);
         }
 
         @Override
@@ -106,13 +108,25 @@ public class CamListActivity extends AppCompatActivity implements CamListContrac
 
         private final TextView mCamNameText;
 
-        public MyViewHolder(View itemView) {
+        private CamDef camDef;
+
+        public MyViewHolder(View itemView, final Context context) {
             super(itemView);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (camDef != null) {
+                        context.startActivity(CamViewActivity.newIntent(context, camDef.getId()));
+                    }
+                }
+            });
 
             mCamNameText = (TextView) itemView.findViewById(R.id.cam_name_text);
         }
 
         public void bind(CamDef camDef) {
+            this.camDef = camDef;
             mCamNameText.setText(camDef.getName());
         }
     }

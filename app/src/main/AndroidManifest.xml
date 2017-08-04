@@ -35,11 +35,9 @@
         </activity>
         <activity
             android:name=".CamListActivity"
-            android:label="@string/title_activity_cam_list"
-            android:theme="@style/AppTheme" />
-        <activity
-            android:name=".AddCamActivity"
-            android:theme="@style/AppTheme" />
+            android:label="@string/title_activity_cam_list" />
+        <activity android:name=".AddCamActivity" />
+        <activity android:name=".CamViewActivity" />
     </application>
 
 </manifest>

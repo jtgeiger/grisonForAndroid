@@ -59,7 +59,7 @@ public class CamViewActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate.");
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_cam_view);
+        setContentView(R.layout.activity_cam_view_deprecated);
         final ActionBar actionBar = getActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
