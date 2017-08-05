@@ -2,6 +2,9 @@ package com.sibilantsolutions.grisonforandroid.presenter;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.WorkerThread;
@@ -17,6 +20,7 @@ import com.sibilantsolutions.grison.evt.ImageHandlerI;
 import com.sibilantsolutions.grison.evt.LostConnectionEvt;
 import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
+import com.sibilantsolutions.grison.sound.adpcm.AdpcmDecoder;
 import com.sibilantsolutions.grisonforandroid.data.repository.FoscamCamSessionFactoryImpl;
 import com.sibilantsolutions.grisonforandroid.domain.repository.CamSession;
 import com.sibilantsolutions.grisonforandroid.domain.usecase.GetCamDefUseCase;
@@ -24,6 +28,8 @@ import com.sibilantsolutions.grisonforandroid.domain.usecase.StartCamSessionUseC
 import com.sibilantsolutions.grisonforandroid.domain.usecase.UseCase;
 import com.sibilantsolutions.grisonforandroid.domain.usecase.UseCaseExecutor;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -208,7 +214,23 @@ public class CamViewPresenter implements CamViewContract.Presenter {
     }
 
     private AudioHandlerI newAudioHandler() {
-        return new AudioHandlerI() {
+        class MyAudioHandler implements AudioHandlerI {
+
+            private final AdpcmDecoder adpcmDecoder = new AdpcmDecoder();
+            private final AudioTrack audioTrack;
+
+            MyAudioHandler() {
+                final int millisecondsToBuffer = 150;
+                final double percentOfASecondToBuffer = millisecondsToBuffer / 1000.0;
+                final int bitsPerByte = 8;
+                final int bufferSizeInBytes = (int) ((AdpcmDecoder.SAMPLE_SIZE_IN_BITS / bitsPerByte) * AdpcmDecoder
+                        .SAMPLE_RATE * percentOfASecondToBuffer);
+                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AdpcmDecoder.SAMPLE_RATE,
+                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSizeInBytes, AudioTrack
+                        .MODE_STREAM);
+                audioTrack.play();  //TODO: This doesn't belong here; should happen when audio started.
+            }
+
             @Override
             public void onAudioStopped(AudioStoppedEvt audioStoppedEvt) {
                 Log.i(TAG, "onAudioStopped.");
@@ -216,9 +238,30 @@ public class CamViewPresenter implements CamViewContract.Presenter {
 
             @Override
             public void onReceive(AudioDataText audioData) {
-                Log.i(TAG, "onReceive: audioData");
+//                Log.i(TAG, "onReceive: audioData");
+                byte[] bytes = adpcmDecoder.decode(audioData.getDataContent());
+                short[] shorts = byteArrayToShortArray(bytes, AdpcmDecoder.BIG_ENDIAN ? ByteOrder
+                        .BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
+                int numWritten = audioTrack.write(shorts, 0, shorts.length);
+                if (numWritten != shorts.length) {
+                    throw new UnsupportedOperationException("array len=" + shorts.length +
+                            " but only wrote " + numWritten + "byte(s)");
+                }
             }
-        };
+        }
+
+        return new MyAudioHandler();
+    }
+
+    private short[] byteArrayToShortArray(byte[] bytes, ByteOrder byteOrder) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        bb.order(byteOrder);
+        short[] shorts = new short[bytes.length / 2];
+        for (int i = 0; i < shorts.length; i++) {
+            shorts[i] = bb.getShort();
+        }
+
+        return shorts;
     }
 
 }
