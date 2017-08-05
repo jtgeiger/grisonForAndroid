@@ -13,7 +13,6 @@ import android.widget.ImageView;
 import android.widget.Switch;
 
 import com.sibilantsolutions.grisonforandroid.data.repository.SharedPreferencesCamDefRepositoryImpl;
-import com.sibilantsolutions.grisonforandroid.domain.model.CamDef;
 import com.sibilantsolutions.grisonforandroid.domain.usecase.GetCamDefUseCase;
 import com.sibilantsolutions.grisonforandroid.presenter.CamViewContract;
 import com.sibilantsolutions.grisonforandroid.presenter.CamViewPresenter;
@@ -50,7 +49,7 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
     protected void onStart() {
         super.onStart();
 
-        presenter.getCamDef(getIntent().getIntExtra(EXTRA_CAM_ID, Integer.MIN_VALUE));
+        presenter.launchCam(getIntent().getIntExtra(EXTRA_CAM_ID, Integer.MIN_VALUE));
     }
 
     @Override
@@ -58,12 +57,6 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
         super.onStop();
 
         presenter.disconnect();
-    }
-
-    @Override
-    @UiThread
-    public void onCamDefLoaded(CamDef camDef) {
-        presenter.launchCam(camDef);
     }
 
     @Override

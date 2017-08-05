@@ -22,8 +22,6 @@ android {
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile myLibraries.grison
-    compile myLibraries.logbackClassic
     compile myLibraries.supportCardView
     compile myLibraries.supportAppCompat
     compile myLibraries.supportDesign

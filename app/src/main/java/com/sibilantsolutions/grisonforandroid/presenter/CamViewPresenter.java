@@ -4,12 +4,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.UiThread;
+import android.support.annotation.WorkerThread;
 import android.util.Log;
 
 import com.sibilantsolutions.grison.driver.foscam.domain.AudioDataText;
 import com.sibilantsolutions.grison.driver.foscam.domain.VideoDataText;
-import com.sibilantsolutions.grison.driver.foscam.net.FoscamSession;
 import com.sibilantsolutions.grison.evt.AlarmEvt;
 import com.sibilantsolutions.grison.evt.AlarmHandlerI;
 import com.sibilantsolutions.grison.evt.AudioHandlerI;
@@ -18,11 +17,13 @@ import com.sibilantsolutions.grison.evt.ImageHandlerI;
 import com.sibilantsolutions.grison.evt.LostConnectionEvt;
 import com.sibilantsolutions.grison.evt.LostConnectionHandlerI;
 import com.sibilantsolutions.grison.evt.VideoStoppedEvt;
-import com.sibilantsolutions.grisonforandroid.domain.model.CamDef;
+import com.sibilantsolutions.grisonforandroid.data.repository.FoscamCamSessionFactoryImpl;
+import com.sibilantsolutions.grisonforandroid.domain.repository.CamSession;
 import com.sibilantsolutions.grisonforandroid.domain.usecase.GetCamDefUseCase;
+import com.sibilantsolutions.grisonforandroid.domain.usecase.StartCamSessionUseCase;
 import com.sibilantsolutions.grisonforandroid.domain.usecase.UseCase;
+import com.sibilantsolutions.grisonforandroid.domain.usecase.UseCaseExecutor;
 
-import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,15 +36,14 @@ import java.util.concurrent.Executors;
 public class CamViewPresenter implements CamViewContract.Presenter {
 
     private static final String TAG = CamViewPresenter.class.getSimpleName();
+
     private final CamViewContract.View view;
-    private final GetCamDefUseCase getCamDefUseCase;
+    private final StartCamSessionUseCase startCamSessionUseCase;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    /**
-     * This should always, only, be accessed fron the executor thread.
-     */
-    private FoscamSession foscamSession;
+    //TODO: What thread for accessing this?
+    private CamSession camSession;
 
     //TOOD: Proper use case.
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -51,39 +51,20 @@ public class CamViewPresenter implements CamViewContract.Presenter {
 
     public CamViewPresenter(CamViewContract.View view, GetCamDefUseCase getCamDefUseCase) {
         this.view = view;
-        this.getCamDefUseCase = getCamDefUseCase;
+        startCamSessionUseCase = new StartCamSessionUseCase(getCamDefUseCase,
+                new FoscamCamSessionFactoryImpl(newAudioHandler(), newImageHandler(),
+                        newAlarmHandler(), newLostConnectionHandler()),
+                UseCaseExecutor.getInstance().getExecutorService());
     }
 
     @Override
-    @UiThread
-    public void getCamDef(final int camId) {
-        getCamDefUseCase.execute(camId, new MainThreadUseCaseCallbackDecorator<>(new UseCase.Callback<CamDef>() {
+    public void launchCam(int camDefId) {
+        startCamSessionUseCase.execute(camDefId, new UseCase.Callback<CamSession>() {
             @Override
-            public void onSuccess(CamDef result) {
-                view.onCamDefLoaded(result);
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "onError: Trouble getting camdef=" + camId, new RuntimeException(e));
-                view.showError();
-            }
-        }));
-    }
-
-    @Override
-    @UiThread
-    public void launchCam(final CamDef camDef) {
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                InetSocketAddress socketAddress = new InetSocketAddress(camDef.getHost(), camDef.getPort());
-                foscamSession = FoscamSession.connect(socketAddress,
-                        camDef.getUsername(), camDef.getPassword(), newAudioHandler(), newImageHandler(),
-                        newAlarmHandler(), newLostConnectionHandler());
-//                foscamSession.audioStart();
-                final boolean isVideoStarted = foscamSession.videoStart();
-
+            @WorkerThread
+            public void onSuccess(CamSession result) {
+                CamViewPresenter.this.camSession = result;
+                final boolean isVideoStarted = result.startVideo();
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -92,16 +73,21 @@ public class CamViewPresenter implements CamViewContract.Presenter {
                     }
                 });
             }
-        };
-        executor.execute(runnable);
+
+            @Override
+            @WorkerThread
+            public void onError(Exception e) {
+                throw new UnsupportedOperationException("TODO (IMB)");
+            }
+        });
     }
 
     @Override
     public void disconnect() {
         Runnable runnable = new Runnable() {
             public void run() {
-                if (foscamSession != null) {
-                    foscamSession.disconnect();
+                if (camSession != null) {
+                    camSession.disconnect();
 
                     handler.post(new Runnable() {
                         @Override
@@ -120,12 +106,12 @@ public class CamViewPresenter implements CamViewContract.Presenter {
     public void setVideo(final boolean isVideoOn) {
         Runnable runnable = new Runnable() {
             public void run() {
-                if (foscamSession != null) {
+                if (camSession != null) {
                     final boolean isVideoStarted;
                     if (isVideoOn) {
-                        isVideoStarted = foscamSession.videoStart();
+                        isVideoStarted = camSession.startVideo();
                     } else {
-                        foscamSession.videoEnd();
+                        camSession.stopVideo();
                         isVideoStarted = false;
                     }
 
