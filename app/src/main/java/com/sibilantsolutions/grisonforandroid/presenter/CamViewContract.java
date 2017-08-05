@@ -20,6 +20,8 @@ public interface CamViewContract {
 
         @UiThread
         void setVideo(boolean isVideoOn);
+
+        void setAudio(boolean isAudioOn);
     }
 
     interface View {
@@ -35,6 +37,10 @@ public interface CamViewContract {
 
         @UiThread
         void setVideoChangeEnabled(boolean isVideoChangeEnabled);
+
+        void setAudio(boolean isAudioOn);
+
+        void setAudioChangeEnabled(boolean isAudioChangeEnabled);
 
     }
 

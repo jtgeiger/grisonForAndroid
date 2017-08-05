@@ -20,5 +20,7 @@
     <string name="camera_image">Camera image</string>
     <string name="camera_image_trans">camera_image</string>
     <string name="title_activity_cam_list">Camera List</string>
+    <string name="video">Video</string>
+    <string name="audio">Audio</string>
 
 </resources>

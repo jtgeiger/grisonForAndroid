@@ -70,6 +70,8 @@ public class CamViewPresenter implements CamViewContract.Presenter {
                     public void run() {
                         view.setVideo(isVideoStarted);
                         view.setVideoChangeEnabled(true);
+                        view.setAudio(false);
+                        view.setAudioChangeEnabled(true);
                     }
                 });
             }
@@ -77,7 +79,7 @@ public class CamViewPresenter implements CamViewContract.Presenter {
             @Override
             @WorkerThread
             public void onError(Exception e) {
-                throw new UnsupportedOperationException("TODO (IMB)");
+                throw new UnsupportedOperationException("TODO (IMB)", e);
             }
         });
     }
@@ -94,6 +96,8 @@ public class CamViewPresenter implements CamViewContract.Presenter {
                         public void run() {
                             view.setVideo(false);
                             view.setVideoChangeEnabled(false);
+                            view.setAudio(false);
+                            view.setAudioChangeEnabled(false);
                         }
                     });
                 }
@@ -127,11 +131,47 @@ public class CamViewPresenter implements CamViewContract.Presenter {
         executor.execute(runnable);
     }
 
+    @Override
+    public void setAudio(final boolean isAudioOn) {
+
+        Runnable runnable = new Runnable() {
+            public void run() {
+                if (camSession != null) {
+                    final boolean isAudioStarted;
+                    if (isAudioOn) {
+                        isAudioStarted = camSession.startAudio();
+                    } else {
+                        camSession.stopAudio();
+                        isAudioStarted = false;
+                    }
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            view.setAudio(isAudioStarted);
+                        }
+                    });
+                }
+            }
+        };
+        executor.execute(runnable);
+    }
+
     private LostConnectionHandlerI newLostConnectionHandler() {
         return new LostConnectionHandlerI() {
             @Override
             public void onLostConnection(LostConnectionEvt evt) {
                 Log.i(TAG, "onLostConnection.");
+
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        view.setVideo(false);
+                        view.setVideoChangeEnabled(false);
+                        view.setAudio(false);
+                        view.setAudioChangeEnabled(false);
+                    }
+                });
             }
         };
     }

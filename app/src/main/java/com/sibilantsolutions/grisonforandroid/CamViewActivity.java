@@ -23,6 +23,7 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
     private CamViewPresenter presenter;
     private ImageView imageView;
     private Switch videoOnSwitch;
+    private Switch audioOnSwitch;
 
     public static Intent newIntent(Context context, int camId) {
         final Intent intent = new Intent(context, CamViewActivity.class);
@@ -43,6 +44,7 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
         imageView = (ImageView) findViewById(R.id.image_view);
 
         videoOnSwitch = (Switch) findViewById(R.id.video_on_switch);
+        audioOnSwitch = (Switch) findViewById(R.id.audio_on_switch);
     }
 
     @Override
@@ -86,6 +88,23 @@ public class CamViewActivity extends AppCompatActivity implements CamViewContrac
     @UiThread
     public void onClickVideoSwitch(View view) {
         presenter.setVideo(videoOnSwitch.isChecked());
+    }
+
+    @Override
+    @UiThread
+    public void setAudio(boolean isAudioOn) {
+        audioOnSwitch.setChecked(isAudioOn);
+    }
+
+    @Override
+    @UiThread
+    public void setAudioChangeEnabled(boolean isAudioChangeEnabled) {
+        audioOnSwitch.setEnabled(isAudioChangeEnabled);
+    }
+
+    @UiThread
+    public void onClickAudioSwitch(View view) {
+        presenter.setAudio(audioOnSwitch.isChecked());
     }
 
 }
